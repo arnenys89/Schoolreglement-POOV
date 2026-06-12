@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Meta Pro Light';
+  src: url('https://db.onlinewebfonts.com/t/ecdf2775fbaedd48554dcbf583c92131.eot');
+  src: url('https://db.onlinewebfonts.com/t/ecdf2775fbaedd48554dcbf583c92131.eot?#iefix') format('embedded-opentype'),
+       url('https://db.onlinewebfonts.com/t/ecdf2775fbaedd48554dcbf583c92131.woff2') format('woff2'),
+       url('https://db.onlinewebfonts.com/t/ecdf2775fbaedd48554dcbf583c92131.woff') format('woff'),
+       url('https://db.onlinewebfonts.com/t/ecdf2775fbaedd48554dcbf583c92131.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Meta Pro Light", "FF Meta Pro Light", "Fira Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Meta Pro Light", "FF Meta Pro Light", "Fira Sans", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  /* Richtpunt corporate identity colors (Kleur Huisstijl) */
+  --color-richtpunt-yellow: #D6AD00; /* CMYK 20 30 100 0 / Gold */
+  --color-richtpunt-yellow-hover: #B59300;
+  --color-richtpunt-gray: #555555; /* PMS 11 */
+  --color-richtpunt-dark: #2E2E2E;
+  --color-richtpunt-light: #F4F4F4;
+}
+
+/* Custom styles for printing and school layout */
+@media print {
+  /* Huidige applicatieschermen en frames volledig verbergen bij het printen van de PDF-modal */
+  #root > div > *:not(.pdf-modal-backdrop) {
+    display: none !important;
+  }
+
+  html, body {
+    background-color: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Reset modal backdrop en overlay styles voor de browser print-engine */
+  .pdf-modal-backdrop {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    height: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  .pdf-modal-content {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .pdf-customizer-sidebar {
+    display: none !important;
+  }
+
+  .pdf-preview-container {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  /* Het werkelijke A4 print-canvas */
+  #pdf-printable-frame {
+    width: 100% !important;
+    min-height: 297mm !important;
+    padding: 20mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+    display: block !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Elegant voorblad (brand cover page) neemt exact de eerste pagina in beslag */
+  .brand-cover-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    height: 257mm !important; /* Volledige hoogte min de padding */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* Weerhoud headers ervan om wees-regels te vormen onderaan de pagina */
+  h1, h2, h3, h4, h5, .prose h3, .prose h4 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .prose {
+    page-break-inside: auto !important;
+  }
+
+  /* Voorkom dat individuele paragrafen middenin gebroken worden */
+  p, li, tr {
+    page-break-inside: avoid !important;
+  }
+}
+
+/* Smooth scrolling and transitions */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

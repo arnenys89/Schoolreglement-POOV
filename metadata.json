@@ -1,0 +1,6 @@
+{
+  "name": "Schoolreglementen Provinciaal Onderwijs",
+  "description": "Een responsieve en doorzoekbare website voor het schoolreglement van de scholen van het Provinciebestuur Oost-Vlaanderen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
