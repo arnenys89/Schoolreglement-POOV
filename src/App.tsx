@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { School, SchoolBoard, RegulationSection, PDFConfig } from "./types";
+import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
   getSavedSchools,
   saveSchools,
@@ -9,6 +9,8 @@ import {
   savePDFConfig,
   defaultSchoolBoard,
   defaultSchools,
+  getSavedSectionsForVersion,
+  saveSectionsForVersion,
 } from "./data/mockData";
 
 import Header from "./components/Header";
@@ -18,7 +20,8 @@ import SectionItem from "./components/SectionItem";
 import AdminPanel from "./components/AdminPanel";
 import PDFExporter from "./components/PDFExporter";
 
-import { FileDown, Shield, FileText, Info, HelpCircle, Layers, CheckCircle2, ChevronDown, Check } from "lucide-react";
+import { FileDown, Shield, FileText, Info, HelpCircle, Layers, CheckCircle2, ChevronDown, Check, Menu, X, ArrowUp } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
   // 1. Core State
@@ -26,6 +29,9 @@ export default function App() {
   const [board, setBoard] = useState<SchoolBoard>(defaultSchoolBoard);
   const [sections, setSections] = useState<RegulationSection[]>([]);
   const [pdfConfig, setPdfConfig] = useState<PDFConfig | null>(null);
+  const [versions, setVersions] = useState<RegulationVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string>("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Active navigational states
   const [activeSchoolId, setActiveSchoolId] = useState("145722"); // Default to Ninove-Zottegem
@@ -49,11 +55,13 @@ export default function App() {
   const [showPDFExporter, setShowPDFExporter] = useState(false);
   const [pdfPrintImmediate, setPdfPrintImmediate] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
+  const [showTOCMobile, setShowTOCMobile] = useState(false);
 
   // Dynamic Scroll progress bar handler
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
+      setShowScrollTop(scrollTop > 500);
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (docHeight > 0) {
         const percentage = (scrollTop / docHeight) * 100;
@@ -174,7 +182,40 @@ export default function App() {
       setActiveSchoolId("145722"); // Default
     }
 
-    setSections(getSavedSections());
+    // Load regulation versions
+    const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
+    let loadedVersionsList: RegulationVersion[] = [];
+    if (savedVersionsJSON) {
+      try {
+        loadedVersionsList = JSON.parse(savedVersionsJSON);
+      } catch {
+        loadedVersionsList = [];
+      }
+    }
+
+    if (loadedVersionsList.length === 0) {
+      loadedVersionsList = [
+        {
+          id: "2026-2027",
+          schoolYear: "2026-2027",
+          isPublished: true,
+          createdAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
+    }
+    setVersions(loadedVersionsList);
+
+    // Load active version ID
+    let currentVersionId = localStorage.getItem("schoolreglement_active_version_id_v1");
+    if (!currentVersionId || !loadedVersionsList.some(v => v.id === currentVersionId)) {
+      const firstPub = loadedVersionsList.find(v => v.isPublished);
+      currentVersionId = firstPub ? firstPub.id : loadedVersionsList[0].id;
+      localStorage.setItem("schoolreglement_active_version_id_v1", currentVersionId);
+    }
+    setActiveVersionId(currentVersionId);
+
+    setSections(getSavedSectionsForVersion(currentVersionId));
     setPdfConfig(getSavedPDFConfig());
 
     // Load custom board if saved in localStorage and auto-migrate if needed
@@ -214,7 +255,7 @@ export default function App() {
   const handleUpdateSection = (updatedSec: RegulationSection) => {
     const updatedList = sections.map((sec) => (sec.id === updatedSec.id ? updatedSec : sec));
     setSections(updatedList);
-    saveSections(updatedList);
+    saveSectionsForVersion(activeVersionId, updatedList);
   };
 
   const handleUpdateBoard = (updatedBoard: SchoolBoard) => {
@@ -242,6 +283,61 @@ export default function App() {
       localStorage.clear();
       window.location.reload();
     }
+  };
+
+  const handleSelectVersion = (versionId: string) => {
+    setActiveVersionId(versionId);
+    localStorage.setItem("schoolreglement_active_version_id_v1", versionId);
+    setSections(getSavedSectionsForVersion(versionId));
+  };
+
+  const handleToggleVersionPublish = (versionId: string) => {
+    const updated = versions.map((v) =>
+      v.id === versionId ? { ...v, isPublished: !v.isPublished } : v
+    );
+    setVersions(updated);
+    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updated));
+  };
+
+  const handleDeleteVersion = (versionId: string) => {
+    if (versionId === activeVersionId) {
+      alert("Fout: U kunt de actieve versie die u momenteel bewerkt niet verwijderen.");
+      return;
+    }
+    const updated = versions.filter((v) => v.id !== versionId);
+    setVersions(updated);
+    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updated));
+    localStorage.removeItem(`schoolreglement_sections_v1_version_${versionId}`);
+  };
+
+  const handleAddVersion = (schoolYear: string, cloneFromId: string) => {
+    const newId = schoolYear.trim().replace(/\s+/g, "_");
+    if (versions.some((v) => v.id === newId)) {
+      alert("Fout: Er bestaat al een versie voor dit schooljaar!");
+      return;
+    }
+
+    const newVersion: RegulationVersion = {
+      id: newId,
+      schoolYear: schoolYear.trim(),
+      isPublished: false, // Default to unpublished
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedVersions = [...versions, newVersion];
+    setVersions(updatedVersions);
+    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updatedVersions));
+
+    // Clone sections
+    let clonedSections: RegulationSection[] = [];
+    if (cloneFromId) {
+      clonedSections = getSavedSectionsForVersion(cloneFromId);
+    } else {
+      clonedSections = [...sections];
+    }
+
+    saveSectionsForVersion(newId, clonedSections);
+    handleSelectVersion(newId);
   };
 
   const handleScrollToSegment = (sectionId: string) => {
@@ -330,6 +426,9 @@ export default function App() {
               handleSchoolChange(schoolId);
             }
           }}
+          versions={versions}
+          activeVersionId={activeVersionId}
+          onVersionChange={handleSelectVersion}
         />
       )}
 
@@ -364,8 +463,67 @@ export default function App() {
       {/* 5. MAIN APP BODY CONTAINER Layout */}
       <main className="flex-1 w-full flex flex-col lg:flex-row gap-0 items-stretch min-h-[calc(100vh-4rem)]">
         
-        {/* Left Side: Sticky Full-Height Navigation TOC & Parent Search panel on Left Edge */}
-        <div className="w-full lg:w-[320px] xl:w-[365px] shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto px-4 py-6 md:p-6 lg:p-8 flex flex-col gap-6 order-2 lg:order-1 no-print shadow-xs">
+        {/* Mobile TOC Toggle (visible only on small screens) */}
+        <div className="lg:hidden p-4 border-b border-gray-200 bg-white sticky top-0 z-40 flex items-center justify-between no-print">
+          <span className="text-xs font-semibold text-gray-700">Inhoudstabel</span>
+          <button
+            onClick={() => setShowTOCMobile(true)}
+            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+
+        {/* Mobile TOC Drawer (visible only on small screens) */}
+        <AnimatePresence>
+          {showTOCMobile && (
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="lg:hidden fixed inset-0 z-[60] bg-white w-full overflow-y-auto shadow-2xl no-print"
+            >
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Inhoudstabel</h3>
+                <button
+                  onClick={() => setShowTOCMobile(false)}
+                  className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                {sections.length > 0 && (
+                  <div className="flex flex-col h-full gap-6">
+                    {board.showSearchEngine !== false && (
+                      <div className="shrink-0">
+                        <SearchEngine
+                          sections={sections}
+                          activeSchoolId={activeSchoolId}
+                          onSelectSection={handleScrollToSegment}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-h-0">
+                      <SidebarTOC
+                        sections={sections}
+                        activeSchoolId={activeSchoolId}
+                        activeSectionId={activeSectionId}
+                        onSelectSection={(id: string) => { handleScrollToSegment(id); setShowTOCMobile(false); }}
+                        onClose={() => setShowTOCMobile(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Left Side: Sticky Full-Height Navigation TOC for Desktop */}
+        <div className="hidden lg:block w-[320px] xl:w-[365px] shrink-0 border-r border-gray-200 bg-white sticky top-0 h-screen overflow-y-auto px-8 py-8 flex flex-col gap-6 no-print shadow-xs">
+
           {sections.length > 0 && (
             <div className="flex flex-col h-full gap-6">
               {board.showSearchEngine !== false && (
@@ -389,6 +547,7 @@ export default function App() {
           )}
         </div>
 
+
         {/* Middle/Main Grid Column: Document Viewer and Editor list */}
         <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 order-1 lg:order-2 max-w-4xl w-full lg:mx-auto flex flex-col gap-5">
           
@@ -403,10 +562,18 @@ export default function App() {
               sections={sections}
               onUpdateSections={(updatedSections) => {
                 setSections(updatedSections);
-                saveSections(updatedSections);
+                saveSectionsForVersion(activeVersionId, updatedSections);
               }}
               adminRole={adminRole}
               schoolAdminSchoolId={schoolAdminSchoolId}
+              
+              // Version control parameters
+              versions={versions}
+              activeVersionId={activeVersionId}
+              onSelectVersion={handleSelectVersion}
+              onAddVersion={handleAddVersion}
+              onToggleVersionPublish={handleToggleVersionPublish}
+              onDeleteVersion={handleDeleteVersion}
             />
           )}
 
@@ -435,22 +602,44 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Campus Selector Dropdown for Parents */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-gray-450 font-sans font-medium hidden md:inline">Kies schoolcampus:</span>
-                <select
-                  value={activeSchoolId}
-                  onChange={(e) => handleSchoolChange(e.target.value)}
-                  className="text-xs font-sans font-semibold text-gray-700 border border-gray-200 rounded-lg p-2 bg-gray-50/50 hover:bg-gray-100 cursor-pointer focus:outline-none focus:ring-1"
-                  style={{ focusRingColor: board.primaryColor || '#D6AD00' }}
-                  id="parent-school-select-dropdown"
-                >
-                  {schools.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.id})
-                    </option>
-                  ))}
-                </select>
+              {/* Campus & School Year Selectors for Parents */}
+              <div className="flex flex-wrap items-center gap-4 shrink-0">
+                {/* School Year Selector Dropdown for Parents */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-450 font-sans font-medium">Schooljaar:</span>
+                  <select
+                    value={activeVersionId}
+                    onChange={(e) => handleSelectVersion(e.target.value)}
+                    className="text-xs font-sans font-bold text-gray-800 border border-gray-200 rounded-lg p-2 bg-gray-50/50 hover:bg-gray-105 cursor-pointer focus:outline-none"
+                    id="parent-school-year-select-dropdown"
+                  >
+                    {versions
+                      .filter((v) => v.isPublished)
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.schoolYear}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Campus Selector Dropdown for Parents */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-450 font-sans font-medium hidden md:inline">Kies schoolcampus:</span>
+                  <select
+                    value={activeSchoolId}
+                    onChange={(e) => handleSchoolChange(e.target.value)}
+                    className="text-xs font-sans font-semibold text-gray-700 border border-gray-200 rounded-lg p-2 bg-gray-50/50 hover:bg-gray-150 cursor-pointer focus:outline-none focus:ring-1"
+                    style={{ focusRingColor: board.primaryColor || '#D6AD00' }}
+                    id="parent-school-select-dropdown"
+                  >
+                    {schools.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -488,7 +677,7 @@ export default function App() {
                   {activeSchool?.name}
                 </h2>
                 <p className="text-xs leading-relaxed max-w-2xl font-sans text-gray-800">
-                  In dit interactieve document vindt u het volledige, goedgekeurde schoolreglement voor het schooljaar <strong>2026-2027</strong>. Per onderdeel kunt u zien of het behoort tot het algemene provinciale bestuursreglement of specifiek voor deze schoollocatie is vastgelegd.
+                  In dit interactieve document vindt u het volledige, goedgekeurde schoolreglement voor het schooljaar <strong>{versions.find((v) => v.id === activeVersionId)?.schoolYear || "2026-2027"}</strong>. Per onderdeel kunt u zien of het behoort tot het algemene provinciale bestuursreglement of specifiek voor deze schoollocatie is vastgelegd.
                 </p>
                 
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-4 text-xs font-mono select-none">
@@ -537,6 +726,7 @@ export default function App() {
                     board={board}
                     adminRole={adminRole}
                     schoolAdminSchoolId={schoolAdminSchoolId}
+                    isActive={activeSectionId === section.id}
                   />
                 );
               })}
@@ -561,6 +751,7 @@ export default function App() {
             setPdfPrintImmediate(false);
           }}
           immediate={pdfPrintImmediate}
+          schoolYear={versions.find((v) => v.id === activeVersionId)?.schoolYear}
         />
       )}
 
@@ -627,6 +818,33 @@ export default function App() {
             <span>Printen</span>
           </button>
         </div>
+      )}
+
+      {/* Floating Back to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-50 p-3 rounded-full shadow-lg hover:shadow-xl cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 border flex items-center justify-center group no-print animate-fade-in"
+          style={{ 
+            backgroundColor: "white", 
+            borderColor: "rgba(0,0,0,0.08)",
+            color: board.primaryColor || "#D6AD00"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = board.primaryColor || "#D6AD00";
+            e.currentTarget.style.color = "white";
+            e.currentTarget.style.borderColor = board.primaryColor || "#D6AD00";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "white";
+            e.currentTarget.style.color = board.primaryColor || "#D6AD00";
+            e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)";
+          }}
+          title="Terug naar boven"
+          id="back-to-top-btn"
+        >
+          <ArrowUp size={20} className="stroke-[2.5] transition-transform group-hover:-translate-y-0.5" />
+        </button>
       )}
 
     </div>

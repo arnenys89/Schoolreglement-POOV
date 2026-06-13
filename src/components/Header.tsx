@@ -1,5 +1,5 @@
 import React from "react";
-import { School, SchoolBoard } from "../types";
+import { School, SchoolBoard, RegulationVersion } from "../types";
 import { ShieldCheck, User, School as SchoolIcon, Layers, ExternalLink } from "lucide-react";
 
 interface HeaderProps {
@@ -12,6 +12,11 @@ interface HeaderProps {
   adminRole?: "none" | "super" | "school";
   schoolAdminSchoolId?: string;
   onRoleChange?: (role: "none" | "super" | "school", schoolId: string) => void;
+  
+  // Added version selectors
+  versions: RegulationVersion[];
+  activeVersionId: string;
+  onVersionChange: (id: string) => void;
 }
 
 export default function Header({
@@ -24,6 +29,9 @@ export default function Header({
   adminRole = "none",
   schoolAdminSchoolId = "",
   onRoleChange,
+  versions,
+  activeVersionId,
+  onVersionChange,
 }: HeaderProps) {
   // Find currently active school to display its specific info
   const activeSchool = schools.find((s) => s.id === activeSchoolId) || schools[0];
@@ -148,7 +156,23 @@ export default function Header({
             
             <div className="hidden sm:block">
               <span className="text-xs font-mono font-medium text-gray-400 block tracking-wider leading-none">DOCUMENT</span>
-              <h1 className="text-lg font-display font-medium text-[#2E2E2E] leading-tight">Schoolreglement 2026-2027</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-lg font-display font-semibold text-[#2E2E2E] leading-none">Schoolreglement</span>
+                <select
+                  value={activeVersionId}
+                  onChange={(e) => onVersionChange(e.target.value)}
+                  className="bg-gray-55/80 border border-gray-300 rounded px-2 py-0.5 text-xs font-bold font-display focus:outline-none focus:ring-1 focus:ring-[#D6AD00] cursor-pointer text-gray-850"
+                  style={{ color: '#2E2E2E' }}
+                >
+                  {versions
+                    .filter((v) => isAdmin || v.isPublished)
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.schoolYear}{!v.isPublished ? " (Concept)" : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
           </div>
 

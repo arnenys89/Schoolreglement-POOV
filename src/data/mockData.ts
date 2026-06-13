@@ -95,6 +95,7 @@ export const defaultPDFConfig: PDFConfig = {
   showTOC: true,
   headerText: "Schoolreglement Provincie Oost-Vlaanderen - Schooljaar 2026-2027",
   footerText: "Pagina [page] van [topage]",
+  filenameTemplate: "Reglement_{School}_{Jaar}.pdf",
 };
 
 export const defaultSections: RegulationSection[] = [
@@ -599,6 +600,41 @@ export function getSavedSections(): RegulationSection[] {
 }
 
 export function saveSections(sections: RegulationSection[]) {
+  localStorage.setItem(REGLEMENT_SECTIONS_KEY, JSON.stringify(sections));
+}
+
+export function getSavedSectionsForVersion(versionId: string): RegulationSection[] {
+  if (!versionId) return getSavedSections();
+  const key = `${REGLEMENT_SECTIONS_KEY}_version_${versionId}`;
+  const data = localStorage.getItem(key);
+  if (!data) {
+    // If we have some general saved sections, copy that as the starting point!
+    const legacyData = localStorage.getItem(REGLEMENT_SECTIONS_KEY);
+    if (legacyData) {
+      localStorage.setItem(key, legacyData);
+      try {
+        return JSON.parse(legacyData);
+      } catch {
+        return defaultSections;
+      }
+    }
+    return defaultSections;
+  }
+  try {
+    return JSON.parse(data);
+  } catch {
+    return defaultSections;
+  }
+}
+
+export function saveSectionsForVersion(versionId: string, sections: RegulationSection[]) {
+  if (!versionId) {
+    saveSections(sections);
+    return;
+  }
+  const key = `${REGLEMENT_SECTIONS_KEY}_version_${versionId}`;
+  localStorage.setItem(key, JSON.stringify(sections));
+  // Keep the current legacy key updated as well so readers can always fallback sensibly
   localStorage.setItem(REGLEMENT_SECTIONS_KEY, JSON.stringify(sections));
 }
 

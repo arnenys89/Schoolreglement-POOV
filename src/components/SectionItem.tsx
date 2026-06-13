@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { RegulationSection, School, SchoolBoard } from "../types";
 import { defaultSchools, lucideNames } from "../data/mockData";
 import LucideIcon from "./LucideIcon";
-import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight } from "lucide-react";
+import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight, Volume2, VolumeX } from "lucide-react";
 
 interface SectionItemProps {
   key?: string;
@@ -16,6 +16,8 @@ interface SectionItemProps {
   board?: SchoolBoard;
   adminRole?: "none" | "super" | "school";
   schoolAdminSchoolId?: string;
+  icon?: string;
+  isActive?: boolean;
 }
 
 export default function SectionItem({
@@ -29,9 +31,61 @@ export default function SectionItem({
   board,
   adminRole = "super",
   schoolAdminSchoolId = "",
+  icon,
+  isActive = false,
 }: SectionItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showIconPicker, setShowIconIconPicker] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const getDutchVoice = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find(v => v.lang.startsWith("nl-NL") || v.lang.startsWith("nl-BE") || v.lang === "nl") || null;
+  };
+
+  const handleSpeech = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      alert("Helaas ondersteunt uw browser geen voorleesfunctie.");
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      window.speechSynthesis.cancel();
+
+      // Clean up brackets or special formatting for better TTS speech
+      const cleanText = textToShow.replace(/\[|\]/g, "");
+      const speechText = `${section.title}. ${cleanText}`;
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      utterance.lang = "nl-NL";
+
+      const nlVoice = getDutchVoice();
+      if (nlVoice) {
+        utterance.voice = nlVoice;
+      }
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+      };
+
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   // Buffer state while editing
   const [title, setTitle] = useState(section.title);
@@ -39,7 +93,7 @@ export default function SectionItem({
   const [globalText, setGlobalText] = useState(section.globalText);
   const [schoolText, setSchoolText] = useState(section.schoolSpecificText[activeSchoolId] || "");
   const [visibleSchools, setVisibleSchools] = useState<string[]>(section.visibleSchools);
-  const [icon, setIcon] = useState(section.icon);
+  const [editingIcon, setEditingIcon] = useState(section.iconName || section.icon);
 
   // Check if this section is visible for active school
   const isVisibleForActiveSchool = section.visibleSchools.includes(activeSchoolId);
@@ -61,7 +115,8 @@ export default function SectionItem({
       globalText,
       schoolSpecificText: updatedSpecificText,
       visibleSchools,
-      icon,
+      icon: editingIcon,
+      iconName: editingIcon,
     });
     setIsEditing(false);
   };
@@ -73,7 +128,7 @@ export default function SectionItem({
     setGlobalText(section.globalText);
     setSchoolText(section.schoolSpecificText[activeSchoolId] || "");
     setVisibleSchools(section.visibleSchools);
-    setIcon(section.icon);
+    setEditingIcon(section.iconName || section.icon);
     setIsEditing(false);
   };
 
@@ -98,29 +153,68 @@ export default function SectionItem({
 
   const getBorderLeftStyle = () => {
     if (isEditing) {
-      return { borderLeft: "5px solid #F59E0B" };
+      return {
+        borderLeftWidth: "5px",
+        borderLeftStyle: "solid" as const,
+        borderLeftColor: "#F59E0B"
+      };
     }
     if (!isVisibleForActiveSchool) {
-      return { borderLeft: "3.5px dashed #CBD5E1" };
+      return {
+        borderLeftWidth: "3.5px",
+        borderLeftStyle: "dashed" as const,
+        borderLeftColor: "#CBD5E1"
+      };
     }
     if (section.level === 1) {
-      return { borderLeft: `6px solid ${board?.primaryColor || "#D6AD00"}` };
+      return {
+        borderLeftWidth: "6px",
+        borderLeftStyle: "solid" as const,
+        borderLeftColor: board?.primaryColor || "#D6AD00"
+      };
     }
     if (section.level === 2) {
-      return { borderLeft: `4px solid #94A3B8` };
+      return {
+        borderLeftWidth: "4px",
+        borderLeftStyle: "solid" as const,
+        borderLeftColor: "#94A3B8"
+      };
     }
-    return { borderLeft: `3.5px dashed #CBD5E1` };
+    return {
+      borderLeftWidth: "3.5px",
+      borderLeftStyle: "dashed" as const,
+      borderLeftColor: "#CBD5E1"
+    };
+  };
+
+  const getStyle = () => {
+    const baseBorder = getBorderLeftStyle();
+    if (isActive && !isEditing) {
+      const activeColor = board?.primaryColor || "#D6AD00";
+      return {
+        ...baseBorder,
+        backgroundColor: `${activeColor}0c`, // Soft 5% brand background color glow
+        borderTopColor: activeColor,
+        borderRightColor: activeColor,
+        borderBottomColor: activeColor,
+        borderLeftColor: activeColor,
+        boxShadow: `0 4px 24px -4px ${activeColor}1a`,
+      };
+    }
+    return baseBorder;
   };
 
   return (
     <article
       id={`section-view-${section.id}`}
-      style={getBorderLeftStyle()}
-      className={`relative mb-5 p-4 md:p-6 bg-white border rounded-r-xl transition-all ${
+      style={getStyle()}
+      className={`relative mb-5 p-4 md:p-6 bg-white border rounded-r-xl transition-all duration-700 ease-in-out ${
         isEditing
           ? "border-amber-400 ring-1 ring-amber-400 shadow-md"
           : !isVisibleForActiveSchool
           ? "border-gray-255 opacity-60 bg-gray-50 border-dashed"
+          : isActive
+          ? "z-10 scale-[1.005] border-amber-500/30"
           : section.level === 1
           ? "border-gray-200/90 shadow-2xs font-medium"
           : section.level === 2
@@ -146,24 +240,6 @@ export default function SectionItem({
       {/* VIEW MODE */}
       {!isEditing ? (
         <div>
-          {/* Breadcrumb path for sub-paragraphs */}
-          {parentSection && (
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-sans mb-2.5 pl-11 select-none flex-wrap leading-tight">
-              <span className="font-sans font-bold bg-gray-150 text-gray-500 text-[9px] uppercase px-1.5 py-0.5 rounded tracking-wide shrink-0">
-                Subparagraaf
-              </span>
-              <span>van</span>
-              <button
-                type="button"
-                onClick={() => onSelectSection?.(parentSection.id)}
-                className="font-bold text-gray-500 hover:text-amber-600 hover:underline transition-colors cursor-pointer text-left inline-flex"
-                title={`Ga naar parent paragraaf ${parentSection.sectionNumber}`}
-              >
-                {parentSection.sectionNumber} {parentSection.title}
-              </button>
-            </div>
-          )}
-
           {/* Header row */}
           <div className="flex items-start justify-between gap-4 mb-3">
             <div className="flex items-center gap-2.5">
@@ -174,22 +250,43 @@ export default function SectionItem({
                   backgroundColor: `${board?.primaryColor || "#D6AD00"}15`
                 }}
               >
-                <LucideIcon name={section.icon} size={18} />
+                <LucideIcon name={section.iconName || section.icon} size={18} />
               </div>
               <div>
                 <span className="text-[10px] font-mono text-gray-400 font-semibold block leading-tight">
                   {section.level === 1 ? "Hoofdstuk" : section.level === 2 ? "Paragraaf" : "Subparagraaf"} {section.sectionNumber}
                 </span>
-                <h3 className={`font-display font-bold leading-tight ${
+                <h3 className={`font-display font-bold leading-tight flex items-center gap-2 ${
                   section.level === 1 ? "text-lg text-gray-900" : section.level === 2 ? "text-base text-gray-800" : "text-sm text-gray-700"
                 }`}>
-                  {section.title}
+                  {(section.iconName || icon) && (
+                    <LucideIcon name={section.iconName || icon} size={section.level === 1 ? 18 : section.level === 2 ? 16 : 14} className="shrink-0 text-gray-500" />
+                  )}
+                  <span>{section.title}</span>
                 </h3>
               </div>
             </div>
 
             {/* Badges and Admin edit trigger */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* TTS Read-Aloud Trigger */}
+              <button
+                onClick={handleSpeech}
+                className={`p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-colors hover:shadow-2xs select-none ${
+                  isSpeaking ? "text-amber-600 bg-amber-50 ring-1 ring-amber-200" : "text-gray-400 hover:text-gray-900"
+                }`}
+                title={isSpeaking ? "Voorlezen stoppen" : "Voorlezen starten (Tekst-naar-spraak)"}
+              >
+                {isSpeaking ? (
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 font-sans px-1 animate-pulse">
+                    <VolumeX size={13} />
+                    <span>Stop</span>
+                  </div>
+                ) : (
+                  <Volume2 size={13} />
+                )}
+              </button>
+
               {hasSpecificText ? (
                 <span className="bg-amber-100/70 text-[#B59300] border border-amber-200/50 text-[10px] font-mono px-2 py-0.5 rounded-full select-none" title="Inhoud is specifiek aangepast voor deze school">
                   Schooleigen
@@ -219,7 +316,11 @@ export default function SectionItem({
           </div>
 
           {/* Section text body */}
-          <p className="text-xs text-gray-600 leading-relaxed font-sans whitespace-pre-wrap pl-11">
+          <p className={`text-xs leading-relaxed font-sans whitespace-pre-wrap pl-11 transition-all duration-300 ${
+            isSpeaking 
+              ? "text-gray-900 font-medium scale-[1.002] origin-left border-l-2 pl-[42px] border-amber-400/80 bg-amber-55/10 py-1" 
+              : "text-gray-600"
+          }`}>
             {textToShow}
           </p>
         </div>
@@ -274,8 +375,8 @@ export default function SectionItem({
                     type="button"
                   >
                     <span className="flex items-center gap-1.5">
-                      <LucideIcon name={icon} size={15} />
-                      <span>{icon}</span>
+                      <LucideIcon name={editingIcon} size={15} />
+                      <span>{editingIcon}</span>
                     </span>
                     <span className="text-[#D6AD00] font-semibold text-[10px]">Wijzig</span>
                   </button>
@@ -286,12 +387,12 @@ export default function SectionItem({
                         <button
                           key={lucideKey}
                           onClick={() => {
-                            setIcon(lucideKey);
+                            setEditingIcon(lucideKey);
                             setShowIconIconPicker(false);
                           }}
                           type="button"
                           className={`p-1.5 rounded hover:bg-gray-100 flex items-center justify-center cursor-pointer ${
-                            icon === lucideKey ? "bg-amber-50 text-[#D6AD00]" : "text-gray-600"
+                            editingIcon === lucideKey ? "bg-amber-50 text-[#D6AD00]" : "text-gray-600"
                           }`}
                           title={lucideKey}
                         >

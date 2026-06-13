@@ -13,6 +13,7 @@ interface PDFExporterProps {
   onUpdateConfig: (updated: PDFConfig) => void;
   onClose: () => void;
   immediate?: boolean;
+  schoolYear?: string;
 }
 
 const convertSingleOklchToRgb = (oklchStr: string): string | null => {
@@ -189,6 +190,13 @@ const convertColorsToRgb = (val: any): any => {
   return res;
 };
 
+const getCORSFriendlyUrl = (url: string) => {
+  if (!url) return "";
+  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
+  // Use images.weserv.nl as a CORS-enabled image caching proxy
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+};
+
 export default function PDFExporter({
   board,
   activeSchool,
@@ -197,7 +205,26 @@ export default function PDFExporter({
   onUpdateConfig,
   onClose,
   immediate = false,
+  schoolYear,
 }: PDFExporterProps) {
+  const getGeneratedFilename = () => {
+    const template = config.filenameTemplate || "Reglement_{School}_{Jaar}.pdf";
+    const year = schoolYear || "2026-2027";
+    const cleanSchoolName = activeSchool.name.replace(/\s+/g, '_');
+    const cleanYear = year.replace(/\s+/g, '_');
+    
+    let processed = template;
+    processed = processed.replace(/{School}/gi, cleanSchoolName);
+    processed = processed.replace(/{Campus}/gi, cleanSchoolName);
+    processed = processed.replace(/{Jaar}/gi, cleanYear);
+    processed = processed.replace(/{Year}/gi, cleanYear);
+    
+    if (!processed.toLowerCase().endsWith(".pdf")) {
+      processed += ".pdf";
+    }
+    return processed;
+  };
+
   // Filter active school visible sections and sort hierarchically
   const visibleSections = sections
     .filter((sec) => sec.visibleSchools.includes(activeSchool.id))
@@ -235,8 +262,8 @@ export default function PDFExporter({
     }
 
     const opt = {
-      margin: [15, 12, 18, 12] as [number, number, number, number], // top, left, bottom, right in mm
-      filename: `Reglement_${activeSchool.name.replace(/\s+/g, '_')}.pdf`,
+      margin: [15, 15, 15, 15] as [number, number, number, number], // 1.5cm (15mm) top, left, bottom, right in mm
+      filename: getGeneratedFilename(),
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2, 
@@ -500,6 +527,30 @@ export default function PDFExporter({
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] font-bold uppercase font-mono text-gray-400 mb-1">
+                  PDF Bestandsnaam Sjabloon
+                </label>
+                <input
+                  type="text"
+                  placeholder="Bijv. Reglement_{School}_{Jaar}.pdf"
+                  value={config.filenameTemplate || ""}
+                  onChange={(e) => onUpdateConfig({ ...config, filenameTemplate: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded border border-gray-300 text-xs focus:border-[#D6AD00]"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 leading-normal font-sans">
+                  Gebruik codes om de bestandsnaam dynamisch te maken:
+                  <br />
+                  <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">{'{School}'}</code> of <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">{'{Campus}'}</code> voor schoolcampus,
+                  <br />
+                  <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">{'{Jaar}'}</code> of <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">{'{Year}'}</code> voor schooljaar.
+                </p>
+                {/* Dynamic live filename preview */}
+                <p className="text-[10.5px] text-gray-600 mt-1.5 font-sans break-all">
+                  Voorbeeld: <span className="font-mono text-[10px] text-[#A67D00] font-semibold">{getGeneratedFilename()}</span>
+                </p>
+              </div>
+
               {/* Include TOC switch */}
               <label className="flex items-center gap-2 cursor-pointer pt-1">
                 <input
@@ -540,7 +591,7 @@ export default function PDFExporter({
         >
           
           <div
-            className="w-[210mm] min-h-[297mm] bg-white text-black p-[20mm] shadow-xl relative"
+            className="w-[210mm] min-h-[297mm] bg-white text-black p-[15mm] shadow-xl relative"
             style={{
               fontFamily: config.fontFamily,
               fontSize: `${config.bodySize}pt`,
@@ -554,7 +605,7 @@ export default function PDFExporter({
             </div>
 
             {/* Beautiful Cover Page (Voorblad met Logo) */}
-            <div className="brand-cover-page text-center select-none flex flex-col justify-between mb-12" style={{ pageBreakAfter: "always" }}>
+            <div className="brand-cover-page text-center select-none flex flex-col justify-between mb-0" style={{ pageBreakAfter: "always" }}>
               
               {/* Header block with both Board logo and School logo partnered */}
               <div className="border-b-2 pb-4 select-none flex items-center justify-between gap-4" style={{ borderColor: board.primaryColor || '#D6AD00' }}>
@@ -564,7 +615,7 @@ export default function PDFExporter({
                   </p>
                   {board.logoUrl ? (
                     <img 
-                      src={board.logoUrl} 
+                      src={getCORSFriendlyUrl(board.logoUrl)} 
                       alt={board.name} 
                       className="h-8 w-auto object-contain max-h-8" 
                       referrerPolicy="no-referrer"
@@ -583,7 +634,7 @@ export default function PDFExporter({
                   </p>
                   {activeSchool?.logoType === "custom_url" && activeSchool?.logoValue ? (
                     <img 
-                      src={activeSchool.logoValue} 
+                      src={getCORSFriendlyUrl(activeSchool.logoValue)} 
                       alt="School Logo" 
                       className="h-8 w-auto object-contain max-h-8" 
                       referrerPolicy="no-referrer"
@@ -609,7 +660,7 @@ export default function PDFExporter({
                   }}
                 >
                   {activeSchool?.logoType === "custom_url" && activeSchool?.logoValue ? (
-                    <img src={activeSchool.logoValue} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    <img src={getCORSFriendlyUrl(activeSchool.logoValue)} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                   ) : activeSchool?.logoType === "abbreviation" && activeSchool?.logoValue ? (
                     <span className="text-xl font-mono font-black text-gray-700 leading-none">{activeSchool.logoValue}</span>
                   ) : (
@@ -700,8 +751,8 @@ export default function PDFExporter({
                 return (
                   <div 
                     key={sec.id} 
-                    className="prose"
-                    style={sec.level === 1 && idx > 0 ? { pageBreakBefore: "always", paddingTop: "8mm" } : {}}
+                    className={`prose ${sec.level === 1 && idx > 0 ? "print-page-break" : "avoid-page-break"}`}
+                    style={sec.level === 1 && idx > 0 ? { paddingTop: "8mm" } : {}}
                   >
                     
                     {/* Variable Typography headers based on levels */}

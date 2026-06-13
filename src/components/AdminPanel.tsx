@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { School, SchoolBoard, RegulationSection } from "../types";
+import { School, SchoolBoard, RegulationSection, RegulationVersion, ChangeLogEntry } from "../types";
 import { lucideNames } from "../data/mockData";
+import DiffViewer from "./DiffViewer";
 import { 
   Building, Settings2, Plus, Edit2, Check, X, Shield, RefreshCw, 
   Palette, Grid, List, Layers, Eye, EyeOff, Trash2, Heart, Award, 
-  HelpCircle, Laptop, Clock, ShieldAlert, Euro, FileText, Sparkles, BookOpen
+  HelpCircle, Laptop, Clock, ShieldAlert, Euro, FileText, Sparkles, BookOpen, CalendarCheck,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import LucideIcon from "./LucideIcon";
 
@@ -18,6 +20,14 @@ interface AdminPanelProps {
   onUpdateSections: (updated: RegulationSection[]) => void;
   adminRole?: "none" | "super" | "school";
   schoolAdminSchoolId?: string;
+
+  // Added Version props
+  versions: RegulationVersion[];
+  activeVersionId: string;
+  onSelectVersion: (id: string) => void;
+  onAddVersion: (schoolYear: string, cloneFromVersionId: string) => void;
+  onToggleVersionPublish: (versionId: string) => void;
+  onDeleteVersion: (versionId: string) => void;
 }
 
 export default function AdminPanel({
@@ -30,8 +40,18 @@ export default function AdminPanel({
   onUpdateSections,
   adminRole = "super",
   schoolAdminSchoolId = "",
+  versions,
+  activeVersionId,
+  onSelectVersion,
+  onAddVersion,
+  onToggleVersionPublish,
+  onDeleteVersion,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<"bestuur" | "scholen" | "inhoud">("bestuur");
+  const [activeTab, setActiveTab] = useState<"bestuur" | "scholen" | "inhoud" | "versies" | "logs">("bestuur");
+  const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([
+    { id: "1", sectionId: "1", timestamp: new Date().toISOString(), adminRole: "superadmin", action: "edit", description: "Titel aangepast" }
+  ]);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   // =========================================================================
   // STATE DEFINITIONS
@@ -74,6 +94,7 @@ export default function AdminPanel({
   const [editSchoolLogoValue, setEditSchoolLogoValue] = useState("");
 
   // New Section creation states (Inhoudstabel)
+  const [activeDiffSection, setActiveDiffSection] = useState<string | null>(null);
   const [newSecTitle, setNewSecTitle] = useState("");
   const [newSecChapter, setNewSecChapter] = useState(1);
   const [newSecNumber, setNewSecNumber] = useState("");
@@ -81,6 +102,10 @@ export default function AdminPanel({
   const [newSecIcon, setNewSecIcon] = useState("FileText");
   const [newSecText, setNewSecText] = useState("");
   const [newSecVisibleSchools, setNewSecVisibleSchools] = useState<string[]>(schools.map(s => s.id));
+
+  // Version management states (Schooljaren)
+  const [newSchoolYear, setNewSchoolYear] = useState("");
+  const [cloneFromVersionId, setCloneFromVersionId] = useState("");
 
   // Preset color patterns for Board levels
   const colorPresets = [
@@ -256,18 +281,30 @@ export default function AdminPanel({
 
   return (
     <section 
-      className="bg-white border border-gray-250 p-5 md:p-8 mb-8 no-print rounded-2xl shadow-sm"
+      className={`bg-white border border-gray-250 mb-8 no-print rounded-2xl shadow-sm transition-all duration-200 ${
+        isExpanded ? "p-5 md:p-8" : "p-4 md:p-5"
+      }`}
       style={{ borderLeft: `6px solid ${primaryColor}` }}
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className={`max-w-7xl mx-auto ${isExpanded ? "space-y-6" : ""}`}>
         
         {/* Header row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <Shield className="text-gray-700" size={20} style={{ color: primaryColor }} />
+        <div 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none group ${
+            isExpanded ? "pb-4 border-b border-gray-200" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Shield className="text-gray-700 shrink-0 transition-transform group-hover:scale-105" size={20} style={{ color: primaryColor }} />
             <div>
-              <h2 className="text-gray-900 font-display font-bold text-base tracking-wide">
-                Beheerder Configuratiescherm
+              <h2 className="text-gray-900 font-display font-bold text-base tracking-wide flex items-center gap-2">
+                <span>Beheerder Configuratiescherm</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-sans font-semibold transition-all ${
+                  isExpanded ? "bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse" : "bg-gray-100 text-gray-600 border border-gray-205"
+                }`}>
+                  {isExpanded ? "Actief" : "Ingeklapt"}
+                </span>
               </h2>
               <p className="text-[11px] text-gray-500 font-normal">
                 Pas instellingen aan op bestuursniveau (huisstijl, kleuren, elementen, inhoudstabel) of per schoolniveau.
@@ -275,13 +312,25 @@ export default function AdminPanel({
             </div>
           </div>
 
-          <button
-            onClick={onResetAllData}
-            className="px-3 py-1.5 text-[11px] text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-650 rounded-md cursor-pointer transition-all flex items-center justify-center gap-1 font-semibold bg-red-50/50"
-          >
-            <RefreshCw size={11} /> Reset alle datavelden
-          </button>
+          <div className="flex items-center gap-3 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onResetAllData}
+              className="px-3 py-1.5 text-[11px] text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-650 rounded-md cursor-pointer transition-all flex items-center justify-center gap-1 font-semibold bg-red-50/50"
+            >
+              <RefreshCw size={11} /> Reset alle datavelden
+            </button>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-gray-700 flex items-center justify-center cursor-pointer"
+              aria-label={isExpanded ? "Inklappen" : "Uitklappen"}
+            >
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          </div>
         </div>
+
+        {isExpanded && (
+          <div className="space-y-6 animate-fade-in pt-2">
 
         {/* Dynamic Navigation Tabs inside Admin Panel */}
         <div className="flex border-b border-gray-200 gap-1 overflow-x-auto select-none">
@@ -323,11 +372,63 @@ export default function AdminPanel({
             <List size={14} />
             <span>Inhoudstabel &amp; Artikelen</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("versies")}
+            className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "versies"
+                ? "bg-gray-100 text-gray-900 border-t-2"
+                : "text-gray-500 hover:bg-gray-50"
+            }`}
+            style={activeTab === "versies" ? { borderTopColor: primaryColor } : {}}
+          >
+            <CalendarCheck size={14} />
+            <span>Reglement Versiebeheer</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "logs"
+                ? "bg-gray-100 text-gray-900 border-t-2"
+                : "text-gray-500 hover:bg-gray-50"
+            }`}
+            style={activeTab === "logs" ? { borderTopColor: primaryColor } : {}}
+          >
+            <Clock size={14} />
+            <span>Wijzigingenlog</span>
+          </button>
         </div>
 
-        {/* =========================================================================
-            TAB 1: BESTUURSNIVEAU CONFIG (Governing board fields, corporate colors)
-            ========================================================================= */}
+        {activeTab === "logs" && (
+          <div className="bg-gray-55/70 border border-gray-200 rounded-xl p-5 md:p-6 animate-fade-in">
+              <h3 className="font-display font-semibold text-xs uppercase tracking-wider text-gray-700 flex items-center gap-1.5 mb-4">
+                <Clock size={14} /> Wijzigingenlog
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-sans text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 uppercase text-[9px] font-mono">
+                      <th className="p-3">Tijdstip</th>
+                      <th className="p-3">Rol</th>
+                      <th className="p-3">Actie</th>
+                      <th className="p-3">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {changeLogs.map(log => (
+                      <tr key={log.id}>
+                        <td className="p-3 font-mono">{new Date(log.timestamp).toLocaleString()}</td>
+                        <td className="p-3 capitalize">{log.adminRole}</td>
+                        <td className="p-3 capitalize">{log.action}</td>
+                        <td className="p-3">{log.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+          </div>
+        )}
         {activeTab === "bestuur" && (
           <div className="space-y-4 animate-fade-in">
             {adminRole === "school" && (
@@ -1142,7 +1243,7 @@ export default function AdminPanel({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-7 h-7 rounded bg-gray-100 flex items-center justify-center shrink-0">
-                          <LucideIcon name={subSec.icon} size={15} className="text-gray-500" />
+                          <LucideIcon name={subSec.iconName || subSec.icon} size={15} className="text-gray-500" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -1159,6 +1260,9 @@ export default function AdminPanel({
                           <p className="text-[10px] text-gray-400 font-sans truncate pr-4 max-w-xl mt-0.5">
                             {subSec.globalText}
                           </p>
+                          {subSec.updatedAt && (
+                            <p className="text-[9px] text-gray-400 font-mono italic mt-1">Laatst bewerkt: {new Date(subSec.updatedAt).toLocaleDateString()}</p>
+                          )}
                         </div>
                       </div>
 
@@ -1168,6 +1272,13 @@ export default function AdminPanel({
                           {subSec.visibleSchools.length} campussen
                         </span>
                         
+                        <button
+                          onClick={() => setActiveDiffSection(subSec.id)}
+                          className="text-[10px] bg-gray-100 hover:bg-gray-200 p-1 rounded transition-colors"
+                        >
+                          Verschillen
+                        </button>
+
                         {adminRole !== "school" && (
                           <button
                             onClick={() => handleDeleteSection(subSec.id)}
@@ -1182,7 +1293,212 @@ export default function AdminPanel({
                   ))}
               </div>
             </div>
+            {activeDiffSection && (
+              <DiffViewer
+                sectionId={activeDiffSection}
+                versions={versions}
+                onClose={() => setActiveDiffSection(null)}
+              />
+            )}
+          </div>
+        )}
 
+        {/* =========================================================================
+            TAB 4: REGLEMENT VERSIEBEHEER (Version management per school year)
+            ========================================================================= */}
+        {activeTab === "versies" && (
+          <div className="space-y-6 animate-fade-in select-none">
+            {adminRole === "school" && (
+              <div className="bg-amber-55 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl font-medium flex items-center gap-2">
+                <ShieldAlert size={16} className="text-amber-600 shrink-0" />
+                <span>
+                  <strong>Schoolbeheerder modus:</strong> U kunt geen nieuwe reglementsversies beheren, aanmaken of de weergavestatus wijzigen. Dit is exclusief voorbehouden aan de Bestuurbeheerder (super-admin). U kunt wel de actieve versie selecteren om de schooleigen teksten van dat jaar in te zien of te bewerken.
+                </span>
+              </div>
+            )}
+
+            {/* Create new version form */}
+            {adminRole === "super" && (
+              <div className="bg-gray-55/70 border border-gray-200 rounded-xl p-5 md:p-6 mt-6">
+                <h3 className="font-display font-semibold text-xs uppercase tracking-wider text-gray-700 flex items-center gap-1.5 mb-4">
+                  <Plus size={15} /> Nieuwe Reglementsversie / Schooljaar Aanmaken
+                </h3>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newSchoolYear.trim()) {
+                      alert("Vul a.u.b. een schooljaar in.");
+                      return;
+                    }
+                    const yearRegex = /^\d{4}-\d{4}$/;
+                    if (!yearRegex.test(newSchoolYear.trim())) {
+                      if (!confirm(`U heeft "${newSchoolYear}" ingevuld. Het is aanbevolen de vorm YYYY-YYYY te gebruiken (bijv. 2027-2028). Wilt u toch doorgaan met deze naam?`)) {
+                        return;
+                      }
+                    }
+                    onAddVersion(newSchoolYear.trim(), cloneFromVersionId);
+                    setNewSchoolYear("");
+                    setCloneFromVersionId("");
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase font-mono text-gray-500 mb-1">
+                        Schooljaar van de versie (bijv. 2027-2028)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 2027-2028"
+                        value={newSchoolYear}
+                        onChange={(e) => setNewSchoolYear(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded border border-gray-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase font-mono text-gray-500 mb-1">
+                        Kopieer inhoud uit een bestaande versie (aanbevolen)
+                      </label>
+                      <select
+                        value={cloneFromVersionId}
+                        onChange={(e) => setCloneFromVersionId(e.target.value)}
+                        className="text-xs p-1.5 border border-gray-300 rounded bg-white w-full h-8"
+                      >
+                        <option value="">-- Geen kopie (gebruik standaard sjabloon) --</option>
+                        {versions.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            Kopieer alles van Schooljaar {v.schoolYear}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded text-white text-xs font-semibold cursor-pointer shadow-xs flex items-center gap-1.5 dynamic-bg-primary dynamic-hover-bg-primary"
+                    >
+                      <Plus size={14} /> Nieuwe Versie Toevoegen
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* List of current versions */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5 md:p-6">
+              <h3 className="font-display font-semibold text-xs uppercase tracking-wider text-gray-700 flex items-center gap-1.5 mb-4">
+                <BookOpen size={14} /> Geregistreerde Versies &amp; Status ({versions.length} schooljaren)
+              </h3>
+
+              <div className="space-y-3">
+                {versions.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic">Er zijn momenteel geen versies geregistreerd.</p>
+                ) : (
+                  [...versions]
+                    .sort((a, b) => b.schoolYear.localeCompare(a.schoolYear))
+                    .map((v) => {
+                      const isActive = v.id === activeVersionId;
+                      return (
+                        <div
+                          key={v.id}
+                          className={`p-4 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                            isActive
+                              ? "border-amber-400 bg-amber-50/25 shadow-xs"
+                              : "border-gray-250 bg-gray-55/40"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-display font-bold text-sm text-gray-900">
+                                Schooljaar {v.schoolYear}
+                              </span>
+                              {isActive && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-805 border border-amber-200">
+                                  Actief Bewerken
+                                </span>
+                              )}
+                              {v.isPublished ? (
+                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <Eye size={10} /> Zichtbaar voor ouders
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200 flex items-center gap-1">
+                                  <EyeOff size={10} /> Verborgen (Concept)
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-450 font-mono mt-1">
+                              ID: {v.id} | Aangemaakt op: {new Date(v.createdAt).toLocaleDateString("nl-NL", { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Activate version button */}
+                            {!isActive && (
+                              <button
+                                onClick={() => onSelectVersion(v.id)}
+                                className="px-3 py-1.5 bg-white border border-gray-305 hover:bg-gray-50 text-gray-700 text-xs rounded-lg font-medium shadow-3xs cursor-pointer transition-all"
+                              >
+                                Selecteer om te bewerken
+                              </button>
+                            )}
+
+                            {/* Publish toggler for super-admin only */}
+                            {adminRole === "super" && (
+                              <button
+                                onClick={() => onToggleVersionPublish(v.id)}
+                                className={`px-3 py-1.5 text-xs rounded-lg font-semibold shadow-3xs cursor-pointer transition-all flex items-center gap-1 border ${
+                                  v.isPublished
+                                    ? "bg-amber-100 hover:bg-amber-150 text-amber-850 border-amber-200"
+                                    : "bg-emerald-600 hover:bg-emerald-705 text-white border-transparent"
+                                }`}
+                              >
+                                {v.isPublished ? (
+                                  <>
+                                    <EyeOff size={12} /> Maak Verborgen
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye size={12} /> Maak Zichtbaar
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            {/* Delete version (only super-admin, cannot delete last version, cannot delete active version) */}
+                            {adminRole === "super" && (
+                              <button
+                                disabled={isActive || versions.length <= 1}
+                                onClick={() => {
+                                  if (confirm(`Weet u absoluut zeker dat u de versie "${v.schoolYear}" definitief wilt wissen? Dit verwijdert alle onderliggende regelgevingen en schooleigen teksten voor dit jaar!`)) {
+                                    onDeleteVersion(v.id);
+                                  }
+                                }}
+                                className={`p-2 text-xs rounded-lg transition-all border shrink-0 ${
+                                  isActive || versions.length <= 1
+                                    ? "text-gray-350 bg-gray-100 border-gray-205 cursor-not-allowed"
+                                    : "text-red-650 hover:bg-red-50 hover:text-red-700 border-red-200 cursor-pointer"
+                                }`}
+                                title={isActive ? "U kunt het actieve schooljaar dat u bewerkt niet verwijderen." : "Verwijder dit schooljaar"}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
           </div>
         )}
 

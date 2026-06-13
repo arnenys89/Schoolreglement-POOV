@@ -89,7 +89,7 @@
   #pdf-printable-frame {
     width: 100% !important;
     min-height: 297mm !important;
-    padding: 20mm !important;
+    padding: 15mm !important;
     margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
@@ -104,7 +104,7 @@
   .brand-cover-page {
     page-break-after: always !important;
     break-after: page !important;
-    height: 257mm !important; /* Volledige hoogte min de padding */
+    height: 255mm !important; /* Volledige hoogte min de padding (15mm + 15mm) en de header watermark */
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
@@ -160,3 +160,59 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Beautiful PDF & Print layout optimizations for html2pdf.js under screen media */
+#pdf-printable-frame {
+  box-sizing: border-box !important;
+}
+
+#pdf-printable-frame .brand-cover-page {
+  page-break-after: always !important;
+  break-after: page !important;
+  height: 255mm !important; /* Forces the cover page to occupy exactly one beautiful full sheet (excluding padding and watermark height) */
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+  margin-bottom: 0 !important;
+}
+
+#pdf-printable-frame .toc-section {
+  page-break-after: always !important;
+  break-after: page !important;
+  margin-bottom: 0 !important;
+}
+
+/* Prevent orphan headings and section headers from being split from their content */
+#pdf-printable-frame h1,
+#pdf-printable-frame h2,
+#pdf-printable-frame h3,
+#pdf-printable-frame h4,
+#pdf-printable-frame h5,
+#pdf-printable-frame .prose h3,
+#pdf-printable-frame .prose h4 {
+  page-break-after: avoid !important;
+  break-after: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+/* Keep individual paragraphs and bullet list items intact */
+#pdf-printable-frame p,
+#pdf-printable-frame li,
+#pdf-printable-frame tr {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+/* Page breaking utilities recognized both on screen (html2pdf.js) and in printer engines */
+#pdf-printable-frame .print-page-break {
+  page-break-before: always !important;
+  break-before: page !important;
+}
+
+#pdf-printable-frame .avoid-page-break {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  margin-bottom: 1.5rem !important;
+}
+

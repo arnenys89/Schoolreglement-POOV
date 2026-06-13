@@ -34,11 +34,22 @@ export interface RegulationSection {
   sectionNumber: string; // e.g. "1", "1.1", "1.2.1"
   level: number; // 1 = Chapter, 2 = Section, 3 = Subsection
   icon: string; // Lucide icon key
+  iconName?: string; // Optional icon name for chapter / section representation
   isGlobal: boolean; // Accessible for all, but text can be school-specific or shared
   visibleSchools: string[]; // List of school IDs where this section is visible
   isSchoolSpecificText: boolean; // True: separate text per school, False: shared text
   globalText: string; // Shared text
   schoolSpecificText: Record<string, string>; // Text keyed by school ID
+  updatedAt?: string; // Last edit date
+}
+
+export interface ChangeLogEntry {
+  id: string;
+  sectionId: string;
+  timestamp: string;
+  adminRole: 'superadmin' | 'admin' | 'school';
+  action: string;
+  description: string;
 }
 
 export interface PDFConfig {
@@ -51,4 +62,13 @@ export interface PDFConfig {
   showTOC: boolean;
   headerText: string;
   footerText: string;
+  filenameTemplate?: string;
 }
+
+export interface RegulationVersion {
+  id: string; // e.g. "2025-2026"
+  schoolYear: string; // e.g. "2025-2026"
+  isPublished: boolean; // true = consulteerbaar door gebruiker, false = verborgen
+  createdAt: string;
+}
+
