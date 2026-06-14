@@ -147,7 +147,13 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const schoolParam = params.get("school");
 
-      const loadedSchools = await fetchSchools();
+      let loadedSchools: School[] = [];
+      try {
+        loadedSchools = await fetchSchools();
+      } catch (e) {
+        console.warn("Could not fetch schools from Firestore, using default fallback list:", e);
+        loadedSchools = defaultSchools;
+      }
       // Fallback if no schools in DB
       let activeSchoolsList = loadedSchools.length > 0 ? loadedSchools : defaultSchools;
       
@@ -178,7 +184,9 @@ export default function App() {
 
       if (schoolsMigrated) {
         setSchools(migratedSchools);
-        await saveSchools(migratedSchools);
+        saveSchools(migratedSchools).catch(err => {
+          console.warn("Background school save failed:", err);
+        });
       } else {
         setSchools(activeSchoolsList);
       }
@@ -224,22 +232,40 @@ export default function App() {
       }
       setActiveVersionId(currentVersionId);
 
-      let loadedSections = await fetchSectionsForVersion(currentVersionId);
+      let loadedSections: RegulationSection[] = [];
+      try {
+        loadedSections = await fetchSectionsForVersion(currentVersionId);
+      } catch (e) {
+        console.warn("Could not fetch sections from Firestore, using defaults instead:", e);
+        loadedSections = defaultSections;
+      }
       
       // Force importing the correct PDF contents and overwriting any existing stale database records
-      const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v4");
+      const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v5");
       if (!hasPdfImportRun) {
         loadedSections = defaultSections;
-        await saveSectionsForVersion(currentVersionId, defaultSections);
-        localStorage.setItem("schoolreglement_pdf_imported_v4", "true");
+        setSections(loadedSections);
+        saveSectionsForVersion(currentVersionId, defaultSections).then(() => {
+          localStorage.setItem("schoolreglement_pdf_imported_v5", "true");
+        }).catch(err => {
+          console.warn("Background save of default sections failed, utilizing fallback presentation:", err);
+        });
       } else if (loadedSections.length === 0) {
         loadedSections = defaultSections;
-        await saveSectionsForVersion(currentVersionId, loadedSections);
+        setSections(loadedSections);
+        saveSectionsForVersion(currentVersionId, loadedSections).catch(err => {
+          console.warn("Background save of empty section-set failed:", err);
+        });
+      } else {
+        setSections(loadedSections);
       }
-
-      setSections(loadedSections);
       
-      let config = await fetchPDFConfig();
+      let config: PDFConfig | null = null;
+      try {
+        config = await fetchPDFConfig();
+      } catch (e) {
+        console.warn("Could not fetch PDF configuration from Firestore:", e);
+      }
       if (!config) {
         config = {
           schoolLogo: "",
@@ -252,7 +278,9 @@ export default function App() {
           headerText: "",
           footerText: ""
         };
-        await savePDFConfig(config);
+        savePDFConfig(config).catch(err => {
+          console.warn("Background save of new PDF configuration failed:", err);
+        });
       }
       setPdfConfig(config);
 

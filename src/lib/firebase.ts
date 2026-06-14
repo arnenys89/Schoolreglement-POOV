@@ -16,8 +16,12 @@ export async function fetchSchools(): Promise<School[]> {
 
 export async function saveSchools(schools: School[]): Promise<void> {
   console.log("Saving schools to firestore...");
-  for (const school of schools) {
-    await setDoc(doc(db, 'schools', school.id), school);
+  const chunkSize = 10;
+  for (let i = 0; i < schools.length; i += chunkSize) {
+    const chunk = schools.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(school => setDoc(doc(db, 'schools', school.id), school))
+    );
   }
 }
 
@@ -27,8 +31,13 @@ export async function fetchSections(): Promise<RegulationSection[]> {
 }
 
 export async function saveSections(sections: RegulationSection[]): Promise<void> {
-  for (const section of sections) {
-    await setDoc(doc(db, 'sections', section.id), section);
+  console.log("Saving sections to firestore...");
+  const chunkSize = 10;
+  for (let i = 0; i < sections.length; i += chunkSize) {
+    const chunk = sections.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(section => setDoc(doc(db, 'sections', section.id), section))
+    );
   }
 }
 
@@ -38,8 +47,13 @@ export async function fetchSectionsForVersion(versionId: string): Promise<Regula
 }
 
 export async function saveSectionsForVersion(versionId: string, sections: RegulationSection[]): Promise<void> {
-  for (const section of sections) {
-    await setDoc(doc(db, `versions/${versionId}/sections`, section.id), section);
+  console.log(`Saving sections to version ${versionId} in firestore...`);
+  const chunkSize = 10;
+  for (let i = 0; i < sections.length; i += chunkSize) {
+    const chunk = sections.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(section => setDoc(doc(db, `versions/${versionId}/sections`, section.id), section))
+    );
   }
 }
 
