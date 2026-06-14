@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "School": {
+      "title": "School",
+      "description": "Definition of a school.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "RegulationSection": {
+      "title": "RegulationSection",
+      "description": "A section in the school regulation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "required": ["id", "title"]
+    },
+    "RegulationVersion": {
+      "title": "RegulationVersion",
+      "description": "A version of the school regulations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "schoolYear": { "type": "string" }
+      },
+      "required": ["id", "schoolYear"]
+    }
+  },
+  "firestore": {
+    "/schools/{schoolId}": {
+      "schema": "School",
+      "description": "Schools collection."
+    },
+    "/sections/{sectionId}": {
+      "schema": "RegulationSection",
+      "description": "General sections collection."
+    },
+    "/versions/{versionId}/sections/{sectionId}": {
+      "schema": "RegulationSection",
+      "description": "Versioned sections."
+    },
+    "/versions/{versionId}": {
+      "schema": "RegulationVersion",
+      "description": "Versions collection."
+    },
+    "/config/{configId}": {
+      "schema": "Object",
+      "description": "Configuration settings."
+    }
+  }
+}

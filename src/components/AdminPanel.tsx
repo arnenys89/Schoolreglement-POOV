@@ -246,6 +246,7 @@ export default function AdminPanel({
       chapterNumber: Number(newSecChapter),
       sectionNumber: newSecNumber,
       level: Number(newSecLevel),
+      type: 'text',
       icon: newSecIcon,
       isGlobal: true,
       visibleSchools: newSecVisibleSchools,

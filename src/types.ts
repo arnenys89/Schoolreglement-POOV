@@ -33,6 +33,7 @@ export interface RegulationSection {
   chapterNumber: number;
   sectionNumber: string; // e.g. "1", "1.1", "1.2.1"
   level: number; // 1 = Chapter, 2 = Section, 3 = Subsection
+  type: 'text' | 'image'; // Added
   icon: string; // Lucide icon key
   iconName?: string; // Optional icon name for chapter / section representation
   isGlobal: boolean; // Accessible for all, but text can be school-specific or shared
@@ -40,6 +41,8 @@ export interface RegulationSection {
   isSchoolSpecificText: boolean; // True: separate text per school, False: shared text
   globalText: string; // Shared text
   schoolSpecificText: Record<string, string>; // Text keyed by school ID
+  globalImageSrc?: string; // Added: Shared image (base64)
+  schoolSpecificImageSrc?: Record<string, string>; // Added: Image keyed by school ID
   updatedAt?: string; // Last edit date
 }
 

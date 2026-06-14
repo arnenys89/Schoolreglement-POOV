@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
-  getSavedSchools,
+  fetchSchools,                
   saveSchools,
-  getSavedSections,
+  fetchSections,
   saveSections,
-  getSavedPDFConfig,
+  fetchPDFConfig,
   savePDFConfig,
-  defaultSchoolBoard,
-  defaultSchools,
-  getSavedSectionsForVersion,
+  fetchSectionsForVersion,
   saveSectionsForVersion,
+  fetchBoard,
+  saveBoard,
+} from "./lib/firebase";
+import {
+  defaultSchoolBoard,
+  defaultSections,
+  defaultSchools
 } from "./data/mockData";
 
 import Header from "./components/Header";
@@ -56,6 +61,7 @@ export default function App() {
   const [pdfPrintImmediate, setPdfPrintImmediate] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const [showTOCMobile, setShowTOCMobile] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Dynamic Scroll progress bar handler
   useEffect(() => {
@@ -136,105 +142,145 @@ export default function App() {
 
   // Initialize data on mount
   useEffect(() => {
-    // Look up URL search params to find direct "sublink" per school, e.g. ?school=36467
-    const params = new URLSearchParams(window.location.search);
-    const schoolParam = params.get("school");
+    (async () => {
+      // Look up URL search params to find direct "sublink" per school, e.g. ?school=36467
+      const params = new URLSearchParams(window.location.search);
+      const schoolParam = params.get("school");
 
-    const loadedSchools = getSavedSchools();
-    
-    // Auto-migrate standard logos if they are missing or still using old placeholders
-    let schoolsMigrated = false;
-    const migratedSchools = loadedSchools.map(school => {
-      let updatedSchool = { ...school };
-      let changed = false;
+      const loadedSchools = await fetchSchools();
+      // Fallback if no schools in DB
+      let activeSchoolsList = loadedSchools.length > 0 ? loadedSchools : defaultSchools;
+      
+      // Auto-migrate standard logos if they are missing or still using old placeholders
+      let schoolsMigrated = false;
+      const migratedSchools = activeSchoolsList.map(school => {
+        let updatedSchool = { ...school };
+        let changed = false;
 
-      // Check if using the old cropped Gent-Oudenaarde logo, migration to new professional banner logo
-      if (school.logoValue && school.logoValue.includes("cropped-logo_gentoudenaarde_geel.png")) {
-        updatedSchool.logoValue = "https://richtpunt.be/gentoudenaarde/wp-content/uploads/sites/5/2024/06/Richtpunt-campus-Gent-Oudenaarde-geel-1024x251.png";
-        changed = true;
-      }
-
-      const defaultSchoolMatch = defaultSchools.find(ds => ds.id === school.id);
-      if (defaultSchoolMatch && (!updatedSchool.logoValue || updatedSchool.logoType !== "custom_url")) {
-        updatedSchool.logoType = "custom_url" as const;
-        updatedSchool.logoValue = defaultSchoolMatch.logoValue;
-        changed = true;
-      }
-
-      if (changed) {
-        schoolsMigrated = true;
-      }
-      return updatedSchool;
-    });
-
-    if (schoolsMigrated) {
-      setSchools(migratedSchools);
-      saveSchools(migratedSchools);
-    } else {
-      setSchools(loadedSchools);
-    }
-
-    // If query parameter matches an existing school, activate it directly.
-    const activeSchoolsList = schoolsMigrated ? migratedSchools : loadedSchools;
-    if (schoolParam && activeSchoolsList.some((s) => s.id === schoolParam)) {
-      setActiveSchoolId(schoolParam);
-    } else {
-      setActiveSchoolId("145722"); // Default
-    }
-
-    // Load regulation versions
-    const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
-    let loadedVersionsList: RegulationVersion[] = [];
-    if (savedVersionsJSON) {
-      try {
-        loadedVersionsList = JSON.parse(savedVersionsJSON);
-      } catch {
-        loadedVersionsList = [];
-      }
-    }
-
-    if (loadedVersionsList.length === 0) {
-      loadedVersionsList = [
-        {
-          id: "2026-2027",
-          schoolYear: "2026-2027",
-          isPublished: true,
-          createdAt: new Date().toISOString()
+        // Check if using the old cropped Gent-Oudenaarde logo, migration to new professional banner logo
+        if (school.logoValue && school.logoValue.includes("cropped-logo_gentoudenaarde_geel.png")) {
+          updatedSchool.logoValue = "https://richtpunt.be/gentoudenaarde/wp-content/uploads/sites/5/2024/06/Richtpunt-campus-Gent-Oudenaarde-geel-1024x251.png";
+          changed = true;
         }
-      ];
-      localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
-    }
-    setVersions(loadedVersionsList);
 
-    // Load active version ID
-    let currentVersionId = localStorage.getItem("schoolreglement_active_version_id_v1");
-    if (!currentVersionId || !loadedVersionsList.some(v => v.id === currentVersionId)) {
-      const firstPub = loadedVersionsList.find(v => v.isPublished);
-      currentVersionId = firstPub ? firstPub.id : loadedVersionsList[0].id;
-      localStorage.setItem("schoolreglement_active_version_id_v1", currentVersionId);
-    }
-    setActiveVersionId(currentVersionId);
-
-    setSections(getSavedSectionsForVersion(currentVersionId));
-    setPdfConfig(getSavedPDFConfig());
-
-    // Load custom board if saved in localStorage and auto-migrate if needed
-    const savedBoard = localStorage.getItem("schoolreglement_board_v1");
-    if (savedBoard) {
-      try {
-        const parsed = JSON.parse(savedBoard);
-        if (!parsed.logoUrl || parsed.logoUrl.includes("Logo_Oost-Vlaanderen.svg")) {
-          parsed.logoUrl = defaultSchoolBoard.logoUrl;
-          localStorage.setItem("schoolreglement_board_v1", JSON.stringify(parsed));
+        const defaultSchoolMatch = defaultSchools.find(ds => ds.id === school.id);
+        if (defaultSchoolMatch && (!updatedSchool.logoValue || updatedSchool.logoType !== "custom_url")) {
+          updatedSchool.logoType = "custom_url" as const;
+          updatedSchool.logoValue = defaultSchoolMatch.logoValue;
+          changed = true;
         }
-        setBoard(parsed);
-      } catch {
+
+        if (changed) {
+          schoolsMigrated = true;
+        }
+        return updatedSchool;
+      });
+
+      if (schoolsMigrated) {
+        setSchools(migratedSchools);
+        await saveSchools(migratedSchools);
+      } else {
+        setSchools(activeSchoolsList);
+      }
+
+      // If query parameter matches an existing school, activate it directly.
+      const finalSchoolsList = schoolsMigrated ? migratedSchools : activeSchoolsList;
+      if (schoolParam && finalSchoolsList.some((s) => s.id === schoolParam)) {
+        setActiveSchoolId(schoolParam);
+      } else {
+        setActiveSchoolId("145722"); // Default
+      }
+
+      // Load regulation versions (We can keep this in local storage for now or move to DB)
+      const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
+      let loadedVersionsList: RegulationVersion[] = [];
+      if (savedVersionsJSON) {
+        try {
+          loadedVersionsList = JSON.parse(savedVersionsJSON);
+        } catch {
+          loadedVersionsList = [];
+        }
+      }
+
+      if (loadedVersionsList.length === 0) {
+        loadedVersionsList = [
+          {
+            id: "2026-2027",
+            schoolYear: "2026-2027",
+            isPublished: true,
+            createdAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
+      }
+      setVersions(loadedVersionsList);
+
+      // Load active version ID
+      let currentVersionId = localStorage.getItem("schoolreglement_active_version_id_v1");
+      if (!currentVersionId || !loadedVersionsList.some(v => v.id === currentVersionId)) {
+        const firstPub = loadedVersionsList.find(v => v.isPublished);
+        currentVersionId = firstPub ? firstPub.id : loadedVersionsList[0].id;
+        localStorage.setItem("schoolreglement_active_version_id_v1", currentVersionId);
+      }
+      setActiveVersionId(currentVersionId);
+
+      let loadedSections = await fetchSectionsForVersion(currentVersionId);
+      if (loadedSections.length === 0) {
+        loadedSections = defaultSections;
+        await saveSectionsForVersion(currentVersionId, loadedSections);
+      }
+      setSections(loadedSections);
+      
+      let config = await fetchPDFConfig();
+      if (!config) {
+        config = {
+          schoolLogo: "",
+          h1Size: 24,
+          h2Size: 20,
+          h3Size: 16,
+          bodySize: 12,
+          fontFamily: "Inter",
+          showTOC: true,
+          headerText: "",
+          footerText: ""
+        };
+        await savePDFConfig(config);
+      }
+      setPdfConfig(config);
+
+      // Load custom board if saved in localStorage and auto-migrate if needed
+      const savedBoard = localStorage.getItem("schoolreglement_board_v1");
+      if (savedBoard) {
+        try {
+          const parsed = JSON.parse(savedBoard);
+          if (!parsed.logoUrl || parsed.logoUrl.includes("Logo_Oost-Vlaanderen.svg")) {
+            parsed.logoUrl = defaultSchoolBoard.logoUrl;
+            localStorage.setItem("schoolreglement_board_v1", JSON.stringify(parsed));
+          }
+          setBoard(parsed);
+        } catch {
+          setBoard(defaultSchoolBoard);
+        }
+      } else {
         setBoard(defaultSchoolBoard);
       }
-    } else {
-      setBoard(defaultSchoolBoard);
-    }
+    })();
   }, []);
+
+  // Synchronize on startup or deep load to scroll straight to the requested section if present
+  useEffect(() => {
+    if (sections.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const sectionParam = params.get("section");
+      if (sectionParam) {
+        // Debounce/wait slightly for rendering and DOM layout to stabilize
+        const timeoutId = setTimeout(() => {
+          handleScrollToSegment(sectionParam);
+        }, 300);
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [sections]);
 
   // Update URL sublink search parameter dynamically to maintain direct linking
   const handleSchoolChange = (schoolId: string) => {
@@ -252,20 +298,20 @@ export default function App() {
     }
   };
 
-  const handleUpdateSection = (updatedSec: RegulationSection) => {
+  const handleUpdateSection = async (updatedSec: RegulationSection) => {
     const updatedList = sections.map((sec) => (sec.id === updatedSec.id ? updatedSec : sec));
     setSections(updatedList);
-    saveSectionsForVersion(activeVersionId, updatedList);
+    await saveSectionsForVersion(activeVersionId, updatedList);
   };
 
-  const handleUpdateBoard = (updatedBoard: SchoolBoard) => {
+  const handleUpdateBoard = async (updatedBoard: SchoolBoard) => {
     setBoard(updatedBoard);
-    localStorage.setItem("schoolreglement_board_v1", JSON.stringify(updatedBoard));
+    await saveBoard(updatedBoard);
   };
 
-  const handleUpdateSchoolsList = (updatedSchools: School[]) => {
+  const handleUpdateSchoolsList = async (updatedSchools: School[]) => {
     setSchools(updatedSchools);
-    saveSchools(updatedSchools);
+    await saveSchools(updatedSchools);
     
     // Fallback if active school got deleted
     if (updatedSchools.length > 0 && !updatedSchools.some((s) => s.id === activeSchoolId)) {
@@ -273,9 +319,9 @@ export default function App() {
     }
   };
 
-  const handleUpdatePDFConfig = (updatedConfig: PDFConfig) => {
+  const handleUpdatePDFConfig = async (updatedConfig: PDFConfig) => {
     setPdfConfig(updatedConfig);
-    savePDFConfig(updatedConfig);
+    await savePDFConfig(updatedConfig);
   };
 
   const handleResetAllData = () => {
@@ -285,10 +331,10 @@ export default function App() {
     }
   };
 
-  const handleSelectVersion = (versionId: string) => {
+  const handleSelectVersion = async (versionId: string) => {
     setActiveVersionId(versionId);
     localStorage.setItem("schoolreglement_active_version_id_v1", versionId);
-    setSections(getSavedSectionsForVersion(versionId));
+    setSections(await fetchSectionsForVersion(versionId));
   };
 
   const handleToggleVersionPublish = (versionId: string) => {
@@ -307,10 +353,10 @@ export default function App() {
     const updated = versions.filter((v) => v.id !== versionId);
     setVersions(updated);
     localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updated));
-    localStorage.removeItem(`schoolreglement_sections_v1_version_${versionId}`);
+    // localStorage.removeItem(`schoolreglement_sections_v1_version_${versionId}`); // This is for firebase now, maybe delete from firebase?
   };
 
-  const handleAddVersion = (schoolYear: string, cloneFromId: string) => {
+  const handleAddVersion = async (schoolYear: string, cloneFromId: string) => {
     const newId = schoolYear.trim().replace(/\s+/g, "_");
     if (versions.some((v) => v.id === newId)) {
       alert("Fout: Er bestaat al een versie voor dit schooljaar!");
@@ -331,17 +377,23 @@ export default function App() {
     // Clone sections
     let clonedSections: RegulationSection[] = [];
     if (cloneFromId) {
-      clonedSections = getSavedSectionsForVersion(cloneFromId);
+      clonedSections = await fetchSectionsForVersion(cloneFromId);
     } else {
       clonedSections = [...sections];
     }
 
-    saveSectionsForVersion(newId, clonedSections);
+    await saveSectionsForVersion(newId, clonedSections);
     handleSelectVersion(newId);
   };
 
   const handleScrollToSegment = (sectionId: string) => {
     setActiveSectionId(sectionId);
+    
+    // Update the browser URL dynamically (without reloading) to provide the direct link parameters
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", sectionId);
+    window.history.replaceState({}, "", url.toString());
+
     const element = document.getElementById(`section-view-${sectionId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -522,9 +574,22 @@ export default function App() {
         </AnimatePresence>
 
         {/* Left Side: Sticky Full-Height Navigation TOC for Desktop */}
-        <div className="hidden lg:block w-[320px] xl:w-[365px] shrink-0 border-r border-gray-200 bg-white sticky top-0 h-screen overflow-y-auto px-8 py-8 flex flex-col gap-6 no-print shadow-xs">
+        <motion.div
+          layout
+          className={`hidden lg:flex flex-col ${isSidebarOpen ? "w-[320px] xl:w-[365px]" : "w-16"} shrink-0 border-r border-gray-200 bg-white sticky top-0 h-screen overflow-y-auto ${isSidebarOpen ? "px-8 py-8" : "px-4 py-8"} gap-6 no-print shadow-xs`}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-1 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+              title={isSidebarOpen ? "Zijbalk inklappen" : "Zijbalk uitklappen"}
+            >
+              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
 
-          {sections.length > 0 && (
+          {isSidebarOpen && sections.length > 0 && (
             <div className="flex flex-col h-full gap-6">
               {board.showSearchEngine !== false && (
                 <div className="shrink-0">
@@ -545,7 +610,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
 
 
         {/* Middle/Main Grid Column: Document Viewer and Editor list */}
@@ -560,9 +625,9 @@ export default function App() {
               onUpdateSchools={handleUpdateSchoolsList}
               onResetAllData={handleResetAllData}
               sections={sections}
-              onUpdateSections={(updatedSections) => {
+              onUpdateSections={async (updatedSections) => {
                 setSections(updatedSections);
-                saveSectionsForVersion(activeVersionId, updatedSections);
+                await saveSectionsForVersion(activeVersionId, updatedSections);
               }}
               adminRole={adminRole}
               schoolAdminSchoolId={schoolAdminSchoolId}

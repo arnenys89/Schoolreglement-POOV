@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { RegulationSection, School, SchoolBoard } from "../types";
 import { defaultSchools, lucideNames } from "../data/mockData";
 import LucideIcon from "./LucideIcon";
-import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight, Volume2, VolumeX } from "lucide-react";
+import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight, Volume2, VolumeX, Link, Check, Clock } from "lucide-react";
 
 interface SectionItemProps {
   key?: string;
@@ -37,6 +38,42 @@ export default function SectionItem({
   const [isEditing, setIsEditing] = useState(false);
   const [showIconPicker, setShowIconIconPicker] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [availableDraft, setAvailableDraft] = useState<any | null>(null);
+  const [lastAutosaved, setLastAutosaved] = useState<string | null>(null);
+
+  const startEditing = () => {
+    const savedDraft = localStorage.getItem(`schoolreglement_draft_${section.id}`);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        setAvailableDraft(parsed);
+      } catch (e) {
+        console.error("Error parsing autosave draft", e);
+      }
+    } else {
+      setAvailableDraft(null);
+    }
+    setIsEditing(true);
+  };
+
+  const handleCopyLink = () => {
+    // Generate the URL with current search params + section ID
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("school", activeSchoolId);
+    url.searchParams.set("section", section.id);
+
+    // Update active URL parameter visually in the browser without pushing history entries
+    window.history.replaceState({}, "", url.toString());
+
+    // Highlight/select the section
+    onSelectSection?.(section.id);
+
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   useEffect(() => {
     return () => {
@@ -89,11 +126,95 @@ export default function SectionItem({
 
   // Buffer state while editing
   const [title, setTitle] = useState(section.title);
+  const [type, setType] = useState(section.type || 'text');
   const [isSchoolSpecificText, setIsSchoolSpecificText] = useState(section.isSchoolSpecificText);
   const [globalText, setGlobalText] = useState(section.globalText);
   const [schoolText, setSchoolText] = useState(section.schoolSpecificText[activeSchoolId] || "");
+  const [globalImageSrc, setGlobalImageSrc] = useState(section.globalImageSrc || "");
+  const [schoolSpecificImageSrc, setSchoolSpecificImageSrc] = useState(section.schoolSpecificImageSrc?.[activeSchoolId] || "");
   const [visibleSchools, setVisibleSchools] = useState<string[]>(section.visibleSchools);
   const [editingIcon, setEditingIcon] = useState(section.iconName || section.icon);
+
+  // Ref to hold the latest draft state for the autosave interval to avoid capturing stale values
+  const latestStateRef = React.useRef({
+    title,
+    type,
+    isSchoolSpecificText,
+    globalText,
+    schoolText,
+    globalImageSrc,
+    schoolSpecificImageSrc,
+    visibleSchools,
+    editingIcon,
+  });
+
+  useEffect(() => {
+    latestStateRef.current = {
+      title,
+      type,
+      isSchoolSpecificText,
+      globalText,
+      schoolText,
+      globalImageSrc,
+      schoolSpecificImageSrc,
+      visibleSchools,
+      editingIcon,
+    };
+  }, [title, type, isSchoolSpecificText, globalText, schoolText, globalImageSrc, schoolSpecificImageSrc, visibleSchools, editingIcon]);
+
+  // Autosave interval: save current edit states to localStorage every 30 seconds
+  useEffect(() => {
+    if (!isEditing) {
+      setLastAutosaved(null);
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      const state = latestStateRef.current;
+      const draftObj = {
+        sectionId: section.id,
+        title: state.title,
+        type: state.type,
+        isSchoolSpecificText: state.isSchoolSpecificText,
+        globalText: state.globalText,
+        schoolText: state.schoolText,
+        globalImageSrc: state.globalImageSrc,
+        schoolSpecificImageSrc: state.schoolSpecificImageSrc,
+        visibleSchools: state.visibleSchools,
+        editingIcon: state.editingIcon,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(`schoolreglement_draft_${section.id}`, JSON.stringify(draftObj));
+
+      const timeStr = new Date().toLocaleTimeString("nl-NL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      setLastAutosaved(timeStr);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [isEditing, section.id]);
+
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    isGlobal: boolean
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        if (isGlobal) {
+          setGlobalImageSrc(base64String);
+        } else {
+          setSchoolSpecificImageSrc(base64String);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Check if this section is visible for active school
   const isVisibleForActiveSchool = section.visibleSchools.includes(activeSchoolId);
@@ -101,34 +222,48 @@ export default function SectionItem({
   // Compute text to show in view mode
   const hasSpecificText = section.isSchoolSpecificText && section.schoolSpecificText[activeSchoolId];
   const textToShow = hasSpecificText ? section.schoolSpecificText[activeSchoolId] : section.globalText;
+  
+  // Compute image to show in view mode
+  const hasSpecificImage = section.isSchoolSpecificText && section.schoolSpecificImageSrc?.[activeSchoolId];
+  const imageToShow = hasSpecificImage ? section.schoolSpecificImageSrc?.[activeSchoolId] : section.globalImageSrc;
 
   const handleSave = () => {
     const updatedSpecificText = { ...section.schoolSpecificText };
+    const updatedSpecificImage = { ...section.schoolSpecificImageSrc };
     if (isSchoolSpecificText) {
       updatedSpecificText[activeSchoolId] = schoolText;
+      updatedSpecificImage[activeSchoolId] = schoolSpecificImageSrc;
     }
 
     onUpdateSection({
       ...section,
       title,
+      type,
       isSchoolSpecificText,
       globalText,
       schoolSpecificText: updatedSpecificText,
+      globalImageSrc,
+      schoolSpecificImageSrc: updatedSpecificImage,
       visibleSchools,
       icon: editingIcon,
       iconName: editingIcon,
     });
+    localStorage.removeItem(`schoolreglement_draft_${section.id}`);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     // Reset buffer states
     setTitle(section.title);
+    setType(section.type || 'text');
     setIsSchoolSpecificText(section.isSchoolSpecificText);
     setGlobalText(section.globalText);
     setSchoolText(section.schoolSpecificText[activeSchoolId] || "");
+    setGlobalImageSrc(section.globalImageSrc || "");
+    setSchoolSpecificImageSrc(section.schoolSpecificImageSrc?.[activeSchoolId] || "");
     setVisibleSchools(section.visibleSchools);
     setEditingIcon(section.iconName || section.icon);
+    localStorage.removeItem(`schoolreglement_draft_${section.id}`);
     setIsEditing(false);
   };
 
@@ -205,7 +340,10 @@ export default function SectionItem({
   };
 
   return (
-    <article
+    <motion.article
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
       id={`section-view-${section.id}`}
       style={getStyle()}
       className={`relative mb-5 p-4 md:p-6 bg-white border rounded-r-xl transition-all duration-700 ease-in-out ${
@@ -269,6 +407,24 @@ export default function SectionItem({
 
             {/* Badges and Admin edit trigger */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Copy Link Trigger */}
+              <button
+                onClick={handleCopyLink}
+                className={`p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-all hover:shadow-2xs select-none flex items-center gap-1 ${
+                  copied ? "text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-2" : "text-gray-400 hover:text-gray-950"
+                }`}
+                title="Kopieer link naar dit onderdeel"
+              >
+                {copied ? (
+                  <>
+                    <Check size={13} className="stroke-[2.5]" />
+                    <span className="text-[10px] font-semibold text-emerald-700 font-sans whitespace-nowrap">Gekopieerd!</span>
+                  </>
+                ) : (
+                  <Link size={13} />
+                )}
+              </button>
+
               {/* TTS Read-Aloud Trigger */}
               <button
                 onClick={handleSpeech}
@@ -303,7 +459,7 @@ export default function SectionItem({
                     <span className="text-[10px] text-gray-400 italic font-medium select-none">Alleen-lezen</span>
                   ) : (
                     <button
-                      onClick={() => setIsEditing(true)}
+                      onClick={startEditing}
                       className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-950 cursor-pointer transition-colors hover:shadow-2xs"
                       title="Bewerk dit onderdeel"
                     >
@@ -315,22 +471,32 @@ export default function SectionItem({
             </div>
           </div>
 
-          {/* Section text body */}
-          <p className={`text-xs leading-relaxed font-sans whitespace-pre-wrap pl-11 transition-all duration-300 ${
-            isSpeaking 
-              ? "text-gray-900 font-medium scale-[1.002] origin-left border-l-2 pl-[42px] border-amber-400/80 bg-amber-55/10 py-1" 
-              : "text-gray-600"
-          }`}>
-            {textToShow}
-          </p>
+          {/* Section body */}
+          {section.type === 'image' ? (
+            <img src={imageToShow} alt={section.title} className="max-w-full rounded-md shadow-sm pl-11" />
+          ) : (
+            <p className={`text-xs leading-relaxed font-sans whitespace-pre-wrap pl-11 transition-all duration-300 ${
+              isSpeaking 
+                ? "text-gray-900 font-medium scale-[1.002] origin-left border-l-2 pl-[42px] border-amber-400/80 bg-amber-55/10 py-1" 
+                : "text-gray-600"
+            }`}>
+              {textToShow}
+            </p>
+          )}
         </div>
       ) : (
         /* EDITING MODE */
         <div className="space-y-4">
-          <div className="border-b border-gray-150 pb-3 flex items-center justify-between">
-            <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+          <div className="border-b border-gray-150 pb-3 flex items-center justify-between gap-4 flex-wrap">
+            <h4 className="text-xs font-bold text-gray-800 flex items-center gap-2 flex-wrap">
               <Sparkles className="text-amber-400" size={14} />
-              Bewerk Paragraaf {section.sectionNumber}
+              <span>Bewerk Paragraaf {section.sectionNumber}</span>
+              {lastAutosaved && (
+                <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 italic font-mono flex items-center gap-1 animate-pulse">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Autosave: {lastAutosaved}
+                </span>
+              )}
             </h4>
             <div className="flex gap-2">
               <button
@@ -347,6 +513,59 @@ export default function SectionItem({
               </button>
             </div>
           </div>
+
+          {availableDraft && (
+            <div className="bg-amber-55/70 border border-amber-200 rounded-lg p-3 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 font-sans animate-fade-in">
+              <div className="flex items-start gap-2 text-amber-800">
+                <Clock className="stroke-[2.5] text-amber-600 shrink-0 mt-0.5" size={15} />
+                <div>
+                  <span className="font-bold">Automatische back-up gevonden!</span>
+                  <p className="text-amber-700 text-[11px] mt-0.5">
+                    Er is een niet-opgeslagen bewerking van dit onderdeel gevonden van{" "}
+                    <span className="font-bold">
+                      {new Date(availableDraft.timestamp).toLocaleTimeString("nl-NL", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit"
+                      })}
+                    </span>.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    setTitle(availableDraft.title);
+                    setType(availableDraft.type || 'text');
+                    setIsSchoolSpecificText(availableDraft.isSchoolSpecificText);
+                    setGlobalText(availableDraft.globalText);
+                    setSchoolText(availableDraft.schoolText);
+                    setGlobalImageSrc(availableDraft.globalImageSrc || "");
+                    setSchoolSpecificImageSrc(availableDraft.schoolSpecificImageSrc || "");
+                    setVisibleSchools(availableDraft.visibleSchools);
+                    if (availableDraft.editingIcon) {
+                      setEditingIcon(availableDraft.editingIcon);
+                    }
+                    setAvailableDraft(null);
+                  }}
+                  type="button"
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold cursor-pointer text-[11px] shadow-3xs"
+                >
+                  Herstellen
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(`schoolreglement_draft_${section.id}`);
+                    setAvailableDraft(null);
+                  }}
+                  type="button"
+                  className="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 cursor-pointer text-[11px]"
+                >
+                  Negeren
+                </button>
+              </div>
+            </div>
+          )}
 
           {adminRole !== "school" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -401,6 +620,25 @@ export default function SectionItem({
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Type Selection */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase font-mono mb-1">
+                    Inhoudstype
+                  </label>
+                  <div className="flex border border-gray-300 rounded overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setType('text')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-semibold ${type === 'text' ? 'bg-[#D6AD00] text-white' : 'bg-white'}`}
+                    >Tekst</button>
+                    <button
+                      type="button"
+                      onClick={() => setType('image')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-semibold ${type === 'image' ? 'bg-[#D6AD00] text-white' : 'bg-white'}`}
+                    >Afbeelding</button>
+                  </div>
                 </div>
               </div>
 
@@ -458,47 +696,61 @@ export default function SectionItem({
             </p>
           </div>
 
-          {/* Texareas Grid */}
+          {/* Texareas/Image Grid */}
           <div className="space-y-3">
-            {/* Global Board Text */}
+            {/* Global Content */}
             <div className={isSchoolSpecificText ? "opacity-60" : ""}>
               <label className="block text-[11px] font-bold text-gray-500 uppercase font-mono mb-1 flex items-center justify-between">
-                <span>Provinciale Gedeelde Tekst (voor alle campussen)</span>
+                <span>Provinciale Gedeelde {type === 'image' ? 'Afbeelding' : 'Tekst'} (voor alle campussen)</span>
                 {!isSchoolSpecificText && (
                   <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 font-sans NORMAL">
                     <Globe size={11} /> Actief in weergave
                   </span>
                 )}
               </label>
-              <textarea
-                value={globalText}
-                onChange={(e) => setGlobalText(e.target.value)}
-                disabled={adminRole === "school"}
-                className={`w-full px-3 py-2 rounded border border-gray-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 focus:ring-1 focus:ring-[#D6AD00] ${adminRole === "school" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
-                placeholder="Voer de gemeenschappelijke provinciale reglementtekst in..."
-              />
+              {type === 'text' ? (
+                <textarea
+                  value={globalText}
+                  onChange={(e) => setGlobalText(e.target.value)}
+                  disabled={adminRole === "school"}
+                  className={`w-full px-3 py-2 rounded border border-gray-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 focus:ring-1 focus:ring-[#D6AD00] ${adminRole === "school" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                  placeholder="Voer de gemeenschappelijke provinciale reglementtekst in..."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {globalImageSrc && <img src={globalImageSrc} alt="Preview" className="max-h-32 rounded border" />}
+                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, true)} disabled={adminRole === "school"} className="block w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#D6AD00] file:text-white hover:file:bg-[#B59300]" />
+                </div>
+              )}
             </div>
 
-            {/* School Specific overridden text */}
+            {/* School Specific overridden content */}
             {isSchoolSpecificText && (
               <div className="bg-amber-50/20 border border-amber-100 rounded-lg p-3">
                 <label className="block text-[11px] font-bold text-amber-700 uppercase font-mono mb-1 flex items-center justify-between">
-                  <span>Schooleigen Tekst (Enkel voor deze campus)</span>
+                  <span>Schooleigen {type === 'image' ? 'Afbeelding' : 'Tekst'} (Enkel voor deze campus)</span>
                   <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 font-sans">
                     <Sparkles size={11} /> Actief in weergave
                   </span>
                 </label>
-                <textarea
-                  value={schoolText}
-                  onChange={(e) => setSchoolText(e.target.value)}
-                  className="w-full px-3 py-2 rounded border border-amber-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 bg-white focus:ring-1 focus:ring-[#D6AD00]"
-                  placeholder={`Voer de specifieke regeling in voor ${schools.find((s) => s.id === activeSchoolId)?.name}...`}
-                />
+                {type === 'text' ? (
+                  <textarea
+                    value={schoolText}
+                    onChange={(e) => setSchoolText(e.target.value)}
+                    className="w-full px-3 py-2 rounded border border-amber-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 bg-white focus:ring-1 focus:ring-[#D6AD00]"
+                    placeholder={`Voer de specifieke regeling in voor ${schools.find((s) => s.id === activeSchoolId)?.name}...`}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {schoolSpecificImageSrc && <img src={schoolSpecificImageSrc} alt="Preview" className="max-h-32 rounded border" />}
+                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, false)} className="block w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-700" />
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
-    </article>
+    </motion.article>
   );
 }
