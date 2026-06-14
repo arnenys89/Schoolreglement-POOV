@@ -103,6 +103,9 @@ export default function AdminPanel({
   const [newSecText, setNewSecText] = useState("");
   const [newSecVisibleSchools, setNewSecVisibleSchools] = useState<string[]>(schools.map(s => s.id));
 
+  // Selected school administrator URL copy option
+  const [selectedSchoolAdminUrlId, setSelectedSchoolAdminUrlId] = useState("");
+
   // Version management states (Schooljaren)
   const [newSchoolYear, setNewSchoolYear] = useState("");
   const [cloneFromVersionId, setCloneFromVersionId] = useState("");
@@ -731,6 +734,108 @@ export default function AdminPanel({
             </div>
           </form>
           </div>
+
+          {/* Dedicated Admin Access URLs Section */}
+          <div className="bg-amber-50/40 border border-amber-200/50 rounded-xl p-5 mt-4">
+            <h3 className="font-display font-semibold text-xs uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-2.5">
+              <Shield size={14} className="text-amber-700" />
+              <span>Interactieve Beheerders-URLs (Directe Sneltoegang)</span>
+            </h3>
+            <p className="text-xs text-gray-650 mb-4 font-sans leading-relaxed">
+              Gebruik onderstaande directe beheerder-koppelingen om instant ingelogd te worden in uw rol zonder de inlogknoppen in de voettekst. Sla deze URLs op in uw favorieten of deel ze veilig met de respectievelijke campus-schoolbeheerders.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Board admin */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col justify-between shadow-3xs">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] bg-amber-500 text-gray-950 font-sans font-bold px-2 py-0.5 rounded uppercase tracking-wider leading-none">
+                      👑 Bestuursbeheerder (Super-Admin)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-2 leading-normal">
+                    Geeft volledige lees- en schrijfrechten over alle scholen, algemene provinciale teksten, huisstijl en configuraties.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/?admin=super`}
+                    className="w-full bg-gray-50 border border-gray-200 text-[11px] font-mono rounded-md px-2.5 py-1.5 focus:outline-none select-all text-gray-700 font-semibold"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/?admin=super`);
+                      alert("Directe inlogkoppeling voor Bestuursbeheerder gekopieerd naar klembord!");
+                    }}
+                    className="px-3 py-1.5 bg-[#2E2E2E] hover:bg-black text-white text-[11px] font-semibold rounded-md cursor-pointer transition-colors shrink-0"
+                  >
+                    Kopiëren
+                  </button>
+                </div>
+              </div>
+
+              {/* School admin */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col justify-between shadow-3xs">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] bg-[#D6AD00] text-gray-950 font-sans font-bold px-2 py-0.5 rounded uppercase tracking-wider leading-none">
+                      🏫 Schoolbeheerders (Campussen)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-2 leading-normal">
+                    Geeft toegang specifiek voor een campusbeheerder om schooleigen teksten, contactinformatie en het schoollogo te veranderen.
+                  </p>
+                </div>
+                
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-400 font-sans shrink-0">Campus:</span>
+                    <select
+                      id="admin-url-school-selector"
+                      className="w-full font-sans text-[11px] border border-gray-200 rounded p-1 hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      value={selectedSchoolAdminUrlId || schoolAdminSchoolId || (schools.length > 0 ? schools[0].id : "145722")}
+                      onChange={(e) => {
+                        setSelectedSchoolAdminUrlId(e.target.value);
+                      }}
+                    >
+                      {schools.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name.replace("Richtpunt campus ", "")} ({s.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="school-admin-copy-url-input"
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/?admin=school&school=${selectedSchoolAdminUrlId || schoolAdminSchoolId || (schools.length > 0 ? schools[0].id : "145722")}`}
+                      className="w-full bg-gray-55 border border-gray-200 text-[11px] font-mono rounded-md px-2.5 py-1.5 focus:outline-none select-all text-gray-700 font-semibold"
+                    />
+                    <button
+                      onClick={() => {
+                        const activeId = selectedSchoolAdminUrlId || schoolAdminSchoolId || (schools.length > 0 ? schools[0].id : "145722");
+                        const val = `${window.location.origin}/?admin=school&school=${activeId}`;
+                        navigator.clipboard.writeText(val);
+                        alert(`Inlogkoppeling voor Schoolbeheerder (Campus ${activeId}) gekopieerd naar klembord!`);
+                      }}
+                      className="px-3 py-1.5 bg-[#D6AD00] hover:bg-[#B59300] text-gray-950 text-[11px] font-semibold rounded-md cursor-pointer transition-colors shrink-0"
+                    >
+                      Kopiëren
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           </div>
         )}
 

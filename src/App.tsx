@@ -47,14 +47,20 @@ export default function App() {
 
   const handleSetIsAdmin = (value: boolean) => {
     setIsAdmin(value);
+    const url = new URL(window.location.href);
     if (!value) {
       setAdminRole("none");
       setSchoolAdminSchoolId("");
+      url.searchParams.delete("admin");
+      url.searchParams.delete("role");
+      url.searchParams.delete("beheer");
     } else {
       if (adminRole === "none") {
         setAdminRole("super");
+        url.searchParams.set("admin", "super");
       }
     }
+    window.history.pushState({}, "", url.toString());
   };
   const [searchFilter, setSearchFilter] = useState("");
   const [showPDFExporter, setShowPDFExporter] = useState(false);
@@ -193,10 +199,27 @@ export default function App() {
 
       // If query parameter matches an existing school, activate it directly.
       const finalSchoolsList = schoolsMigrated ? migratedSchools : activeSchoolsList;
+      let matchedSchoolId = "145722"; // Default
       if (schoolParam && finalSchoolsList.some((s) => s.id === schoolParam)) {
+        matchedSchoolId = schoolParam;
         setActiveSchoolId(schoolParam);
       } else {
         setActiveSchoolId("145722"); // Default
+      }
+
+      // Automatically configure admin settings based on custom entry query parameters
+      const adminRoleParam = params.get("admin") || params.get("role") || params.get("beheer");
+      if (adminRoleParam) {
+        const roleLower = adminRoleParam.toLowerCase();
+        if (roleLower === "super" || roleLower === "board" || roleLower === "bestuur" || roleLower === "bestuursbeheerder") {
+          setIsAdmin(true);
+          setAdminRole("super");
+          setSchoolAdminSchoolId("");
+        } else if (roleLower === "school" || roleLower === "schoolbeheerder") {
+          setIsAdmin(true);
+          setAdminRole("school");
+          setSchoolAdminSchoolId(matchedSchoolId);
+        }
       }
 
       // Load regulation versions (We can keep this in local storage for now or move to DB)
@@ -510,6 +533,18 @@ export default function App() {
           onRoleChange={(role, schoolId) => {
             setAdminRole(role);
             setSchoolAdminSchoolId(schoolId);
+            const url = new URL(window.location.href);
+            if (role === "super") {
+              url.searchParams.set("admin", "super");
+              url.searchParams.delete("school");
+            } else if (role === "school") {
+              url.searchParams.set("admin", "school");
+              if (schoolId) {
+                url.searchParams.set("school", schoolId);
+              }
+            }
+            window.history.pushState({}, "", url.toString());
+
             if (role === "school" && schoolId) {
               handleSchoolChange(schoolId);
             }
@@ -876,6 +911,10 @@ export default function App() {
                     setIsAdmin(true);
                     setAdminRole("super");
                     setSchoolAdminSchoolId("");
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("admin", "super");
+                    url.searchParams.delete("school");
+                    window.history.pushState({}, "", url.toString());
                   }}
                   className="px-3 py-1 bg-gray-800 text-gray-300 hover:text-white rounded hover:bg-gray-750 transition duration-150 cursor-pointer text-[10px] font-semibold border border-gray-700"
                   id="footer-admin-login-super"
@@ -889,6 +928,12 @@ export default function App() {
                     // Default to the active school's ID if possible, otherwise first school
                     const defaultId = activeSchoolId || (schools.length > 0 ? schools[0].id : "145722");
                     setSchoolAdminSchoolId(defaultId);
+                    
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("admin", "school");
+                    url.searchParams.set("school", defaultId);
+                    window.history.pushState({}, "", url.toString());
+
                     handleSchoolChange(defaultId);
                   }}
                   className="px-3 py-1 bg-gray-800 text-gray-300 hover:text-white rounded hover:bg-gray-750 transition duration-150 cursor-pointer text-[10px] font-semibold border border-gray-700"
