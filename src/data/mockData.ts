@@ -127,7 +127,7 @@ Onze professionele medewerkers dragen zorg voor de brede persoonlijke ontwikkeli
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: false,
-    globalText: `Het schoolbestuur is de eigenlijke organisator van de school. Ze richt niet alleen het onderwijs in, maar is ook verantwoordelijk voor het beleid. Op deze school is het schoolbestuur de Provincie Oost-Vlaanderen, met de deputatie als uitvoerend orgaan.
+    globalText: `Het schoolbestuur is de eigenlijke organisator van de school. Ze richt niet alleen het onderwijs in, maar is ook verantwoordelijk voor het beleid. Op deze school is het schoolbestuur de Provincie Oost-Vlaanderen, met de deputatie als uitvoerend org:
 
 Nuttige Adressen:
 Het schoolbestuur:
@@ -162,10 +162,10 @@ Website: www.oost-vlaanderen.be`,
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: true,
-    globalText: `De directeur is het schoolhoofd en staat in voor de dagelijkse leiding van de school. De directeur heeft bijzondere opdrachten op het gebied van toelating, tucht, sancties, evaluaties en deliberaties.`,
+    globalText: ``,
     schoolSpecificText: {
-      "36467": "Directeur voor Richtpunt campus Eeklo staat paraat om leerlingen te begeleiden naar academisch succes.",
-      "145722": "Directeur voor Richtpunt campus Ninove-Zottegem coördineert de campussen Ninove en Zottegem nauwgezet.",
+      "145722": `Directeur voor Richtpunt campus Ninove-Zottegem coördineert de campussen Ninove en Zottegem nauwgezet.`,
+      "36467": `Directeur voor Richtpunt campus Eeklo staat paraat om leerlingen te begeleiden naar academisch succes.`,
     },
   },
   {
@@ -179,7 +179,7 @@ Website: www.oost-vlaanderen.be`,
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: false,
-    globalText: `De leerkrachten hebben naast het geven van lessen ook andere algemene taken zoals opvoeden, zorgen voor orde, bijwonen van de klassenraden als effectief lid, ... Ze oefenen ook meer specifieke taken uit: zo kunnen ze optreden als klasleerkracht, coördinator, of intern pedagogisch begeleider.`,
+    globalText: `De leerkrachten hebben naast het geven van lessen ook andere algemene taken zoals opvoeden, zorgen voor orde, bijwonen van de klassenraden als effectief lid, ... Ze oefenen ook meer specifieke tasks uit: zo kunnen ze optreden als klasleerkracht, coördinator, of intern pedagogisch begeleider.`,
     schoolSpecificText: {},
   },
   {
@@ -249,7 +249,7 @@ Website: www.oost-vlaanderen.be`,
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: false,
-    globalText: `Ouders hebben hoge verwachtingen van de school omtrent de opleiding en opvoeding van hun kinderen. Onze school zet zich elke dag in om aan deze verwachtingen te voldoen, maar in ruil verwachten we wel de volle steun van je ouders. In bijlage 4 vind je de engagementsverklaring met de wederzijdse afspraken.`,
+    globalText: `Ouders hebben hoge verwachtingen van de school omtrent de opleiding en opvoeding van hun kinderen. Onze school zet zich elke dag in om aan deze verwachtingen te voldoen, maar in ruil verwachten we wel de volle steun van je ouders. In bijlage vind je de engagementsverklaring met de wederzijdse afspraken.`,
     schoolSpecificText: {},
   },
 
@@ -265,7 +265,7 @@ Website: www.oost-vlaanderen.be`,
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: true,
-    globalText: `Richtpunt secundaire scholen bieden een breed scala aan studierichtingen aan in verschillende finaliteitsvormen: doorstroomfinaliteit, dubbele finaliteit, en arbeidsmarktfinaliteit (inclusief duaal leren).`,
+    globalText: ``,
     schoolSpecificText: {
       "145722": `In campus Ninove-Zottegem bieden wij de volgende stromen aan:
 
@@ -465,11 +465,7 @@ Derde graad:
     isGlobal: true,
     visibleSchools: defaultSchools.map((s) => s.id),
     isSchoolSpecificText: true,
-    globalText: `Onze reguliere lessen lopen van maandag tot en met vrijdag. De lesuren zijn:
-- Voormiddag: 08.25 uur tot 12.00 uur
-- Namiddag: 12.50 uur tot 15.35 uur of 16.25 uur.
-
-Woensdagnamiddag is er geen les (vrije namiddag).`,
+    globalText: ``,
     schoolSpecificText: {
       "145722": `Op campus Ninove-Zottegem geldt de volgende dagschema:
 - 1ste lesuur: 08.25 - 09.15
@@ -597,7 +593,7 @@ De school heeft in nauw overleg met directies en ICT-coördinatoren een laptopbe
     isSchoolSpecificText: false,
     globalText: `De bijdrageregeling bevat een gedetailleerd overzicht van de gemaakte kosten (zoals turnkledij, werkkoffers, boeken, etc.). Verplichte kosten zijn diegene die onlosmakelijk verbonden zijn aan de studierichting. Er is een actieve afwijkingsregeling voor gezinnen met financiële moeilijkheden en een maximumfactuur voor de eerste graad (€388,08 voor de A-stroom, €258,72 voor de B-stroom).`,
     schoolSpecificText: {},
-  },
+  }
 ];
 
 // Helper functions for localStorage persistence

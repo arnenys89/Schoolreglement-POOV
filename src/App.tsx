@@ -225,10 +225,18 @@ export default function App() {
       setActiveVersionId(currentVersionId);
 
       let loadedSections = await fetchSectionsForVersion(currentVersionId);
-      if (loadedSections.length === 0) {
+      
+      // Force importing the correct PDF contents and overwriting any existing stale database records
+      const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v4");
+      if (!hasPdfImportRun) {
+        loadedSections = defaultSections;
+        await saveSectionsForVersion(currentVersionId, defaultSections);
+        localStorage.setItem("schoolreglement_pdf_imported_v4", "true");
+      } else if (loadedSections.length === 0) {
         loadedSections = defaultSections;
         await saveSectionsForVersion(currentVersionId, loadedSections);
       }
+
       setSections(loadedSections);
       
       let config = await fetchPDFConfig();
