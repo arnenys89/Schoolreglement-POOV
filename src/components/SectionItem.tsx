@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { RegulationSection, School, SchoolBoard } from "../types";
 import { defaultSchools, lucideNames } from "../data/mockData";
 import LucideIcon from "./LucideIcon";
-import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight, Volume2, VolumeX, Link, Check, Clock } from "lucide-react";
+import { Edit, Save, X, Globe, EyeOff, Eye, Sparkles, HelpCircle, CornerDownRight, Volume2, VolumeX, Link, Check, Clock, Bold, Italic, List, ListOrdered, Code } from "lucide-react";
+import { renderRichText } from "../lib/richText";
 
 interface SectionItemProps {
   key?: string;
@@ -275,6 +276,91 @@ export default function SectionItem({
     }
   };
 
+  const insertFormatting = (
+    textareaId: string,
+    prefix: string,
+    suffix: string,
+    fallbackText: string,
+    currentVal: string,
+    setVal: (val: string) => void
+  ) => {
+    const el = document.getElementById(textareaId) as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selectedText = currentVal.substring(start, end);
+    const textToInsert = selectedText || fallbackText;
+    const newVal = currentVal.substring(0, start) + prefix + textToInsert + suffix + currentVal.substring(end);
+    setVal(newVal);
+    
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, start + prefix.length + textToInsert.length);
+    }, 0);
+  };
+
+  const renderEditorToolbar = (textareaId: string, currentVal: string, setVal: (val: string) => void) => {
+    return (
+      <div className="flex gap-1 mb-1.5 p-1 bg-gray-105 border border-gray-200 rounded-t-md items-center">
+        <button
+          type="button"
+          onClick={() => insertFormatting(textareaId, "**", "**", "vetgedrukt", currentVal, setVal)}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Vetgedrukt"
+        >
+          <Bold size={13} className="stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => insertFormatting(textareaId, "*", "*", "schuingedrukt", currentVal, setVal)}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Schuingedrukt"
+        >
+          <Italic size={13} className="stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => insertFormatting(textareaId, "`", "`", "code", currentVal, setVal)}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Codeblok"
+        >
+          <Code size={13} />
+        </button>
+        <div className="h-4 w-px bg-gray-300 mx-1"></div>
+        <button
+          type="button"
+          onClick={() => insertFormatting(textareaId, "- ", "", "Opsommingsteken", currentVal, setVal)}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Opsommingsteken"
+        >
+          <List size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => insertFormatting(textareaId, "1. ", "", "Genummerde stap", currentVal, setVal)}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Genummerde lijst"
+        >
+          <ListOrdered size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const urlPr = prompt("Voer de URL in (bijv. https://richtpunt.be):", "https://");
+            if (urlPr) {
+              insertFormatting(textareaId, "[", `](${urlPr})`, "Koppelingstekst", currentVal, setVal);
+            }
+          }}
+          className="p-1 hover:bg-gray-200 rounded transition text-gray-700 cursor-pointer flex items-center justify-center"
+          title="Hyperlink toevoegen"
+        >
+          <Link size={13} />
+        </button>
+        <span className="ml-auto text-[9px] text-gray-400 font-mono pr-2 select-none">Rich Text</span>
+      </div>
+    );
+  };
+
   // If in view mode and not visible for this school of the board, do not render
   if (!isAdmin && !isVisibleForActiveSchool) {
     return null;
@@ -475,13 +561,13 @@ export default function SectionItem({
           {section.type === 'image' ? (
             <img src={imageToShow} alt={section.title} className="max-w-full rounded-md shadow-sm pl-11" />
           ) : (
-            <p className={`text-xs leading-relaxed font-sans whitespace-pre-wrap pl-11 transition-all duration-300 ${
+            <div className={`pl-11 transition-all duration-300 ${
               isSpeaking 
                 ? "text-gray-900 font-medium scale-[1.002] origin-left border-l-2 pl-[42px] border-amber-400/80 bg-amber-55/10 py-1" 
                 : "text-gray-600"
             }`}>
-              {textToShow}
-            </p>
+              {renderRichText(textToShow)}
+            </div>
           )}
         </div>
       ) : (
@@ -709,13 +795,17 @@ export default function SectionItem({
                 )}
               </label>
               {type === 'text' ? (
-                <textarea
-                  value={globalText}
-                  onChange={(e) => setGlobalText(e.target.value)}
-                  disabled={adminRole === "school"}
-                  className={`w-full px-3 py-2 rounded border border-gray-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 focus:ring-1 focus:ring-[#D6AD00] ${adminRole === "school" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
-                  placeholder="Voer de gemeenschappelijke provinciale reglementtekst in..."
-                />
+                <div className="flex flex-col">
+                  {renderEditorToolbar(`textarea-global-${section.id}`, globalText, setGlobalText)}
+                  <textarea
+                    id={`textarea-global-${section.id}`}
+                    value={globalText}
+                    onChange={(e) => setGlobalText(e.target.value)}
+                    disabled={adminRole === "school"}
+                    className={`w-full px-3 py-2 rounded-b-md border border-gray-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 focus:ring-1 focus:ring-[#D6AD00] ${adminRole === "school" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                    placeholder="Voer de gemeenschappelijke provinciale reglementtekst in..."
+                  />
+                </div>
               ) : (
                 <div className="space-y-2">
                   {globalImageSrc && <img src={globalImageSrc} alt="Preview" className="max-h-32 rounded border" />}
@@ -734,12 +824,16 @@ export default function SectionItem({
                   </span>
                 </label>
                 {type === 'text' ? (
-                  <textarea
-                    value={schoolText}
-                    onChange={(e) => setSchoolText(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-amber-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 bg-white focus:ring-1 focus:ring-[#D6AD00]"
-                    placeholder={`Voer de specifieke regeling in voor ${schools.find((s) => s.id === activeSchoolId)?.name}...`}
-                  />
+                  <div className="flex flex-col">
+                    {renderEditorToolbar(`textarea-school-${section.id}`, schoolText, setSchoolText)}
+                    <textarea
+                      id={`textarea-school-${section.id}`}
+                      value={schoolText}
+                      onChange={(e) => setSchoolText(e.target.value)}
+                      className="w-full px-3 py-2 rounded-b-md border border-amber-300 focus:border-[#D6AD00] text-xs font-sans leading-relaxed h-28 bg-white focus:ring-1 focus:ring-[#D6AD00]"
+                      placeholder={`Voer de specifieke regeling in voor ${schools.find((s) => s.id === activeSchoolId)?.name}...`}
+                    />
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {schoolSpecificImageSrc && <img src={schoolSpecificImageSrc} alt="Preview" className="max-h-32 rounded border" />}

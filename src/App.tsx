@@ -25,11 +25,13 @@ import SectionItem from "./components/SectionItem";
 import AdminPanel from "./components/AdminPanel";
 import PDFExporter from "./components/PDFExporter";
 
-import { FileDown, Shield, FileText, Info, HelpCircle, Layers, CheckCircle2, ChevronDown, Check, Menu, X, ArrowUp } from "lucide-react";
+import { FileDown, Shield, FileText, Info, HelpCircle, Layers, CheckCircle2, ChevronDown, Check, Menu, X, ArrowUp, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
   // 1. Core State
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingPhase, setLoadingPhase] = useState("Databaseverbinding initialiseren...");
   const [schools, setSchools] = useState<School[]>([]);
   const [board, setBoard] = useState<SchoolBoard>(defaultSchoolBoard);
   const [sections, setSections] = useState<RegulationSection[]>([]);
@@ -153,14 +155,75 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const schoolParam = params.get("school");
 
-      let loadedSchools: School[] = [];
-      try {
-        loadedSchools = await fetchSchools();
-      } catch (e) {
-        console.warn("Could not fetch schools from Firestore, using default fallback list:", e);
-        loadedSchools = defaultSchools;
+      // Load regulation versions (We can keep this in local storage for now or move to DB)
+      const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
+      let loadedVersionsList: RegulationVersion[] = [];
+      if (savedVersionsJSON) {
+        try {
+          loadedVersionsList = JSON.parse(savedVersionsJSON);
+        } catch {
+          loadedVersionsList = [];
+        }
       }
-      // Fallback if no schools in DB
+
+      if (loadedVersionsList.length === 0) {
+        loadedVersionsList = [
+          {
+            id: "2026-2027",
+            schoolYear: "2026-2027",
+            isPublished: true,
+            createdAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
+      }
+      setVersions(loadedVersionsList);
+
+      // Load active version ID
+      let currentVersionId = localStorage.getItem("schoolreglement_active_version_id_v1");
+      if (!currentVersionId || !loadedVersionsList.some(v => v.id === currentVersionId)) {
+        const firstPub = loadedVersionsList.find(v => v.isPublished);
+        currentVersionId = firstPub ? firstPub.id : loadedVersionsList[0].id;
+        localStorage.setItem("schoolreglement_active_version_id_v1", currentVersionId);
+      }
+      setActiveVersionId(currentVersionId);
+
+      setLoadingPhase("Gegevens ophalen en synchroniseren...");
+
+      let loadedSchools: School[] = [];
+      let loadedSections: RegulationSection[] = [];
+      let loadedPDFConfig: PDFConfig | null = null;
+      let loadedBoardObj: SchoolBoard | null = null;
+
+      try {
+        const [schoolsResult, sectionsResult, pdfConfigResult, boardResult] = await Promise.all([
+          fetchSchools().catch((e) => {
+            console.warn("Could not fetch schools from Firestore, using default fallback list:", e);
+            return defaultSchools;
+          }),
+          fetchSectionsForVersion(currentVersionId).catch((e) => {
+            console.warn("Could not fetch sections from Firestore, using defaults instead:", e);
+            return [];
+          }),
+          fetchPDFConfig().catch((e) => {
+            console.warn("Could not fetch PDF configuration from Firestore:", e);
+            return null;
+          }),
+          fetchBoard().catch((e) => {
+            console.warn("Could not fetch Board configuration from Firestore:", e);
+            return null;
+          })
+        ]);
+
+        loadedSchools = schoolsResult;
+        loadedSections = sectionsResult;
+        loadedPDFConfig = pdfConfigResult;
+        loadedBoardObj = boardResult;
+      } catch (err) {
+        console.error("Critical parallel fetch failed:", err);
+      }
+
+      // 1. Process Schools
       let activeSchoolsList = loadedSchools.length > 0 ? loadedSchools : defaultSchools;
       
       // Auto-migrate standard logos if they are missing or still using old placeholders
@@ -222,48 +285,7 @@ export default function App() {
         }
       }
 
-      // Load regulation versions (We can keep this in local storage for now or move to DB)
-      const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
-      let loadedVersionsList: RegulationVersion[] = [];
-      if (savedVersionsJSON) {
-        try {
-          loadedVersionsList = JSON.parse(savedVersionsJSON);
-        } catch {
-          loadedVersionsList = [];
-        }
-      }
-
-      if (loadedVersionsList.length === 0) {
-        loadedVersionsList = [
-          {
-            id: "2026-2027",
-            schoolYear: "2026-2027",
-            isPublished: true,
-            createdAt: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
-      }
-      setVersions(loadedVersionsList);
-
-      // Load active version ID
-      let currentVersionId = localStorage.getItem("schoolreglement_active_version_id_v1");
-      if (!currentVersionId || !loadedVersionsList.some(v => v.id === currentVersionId)) {
-        const firstPub = loadedVersionsList.find(v => v.isPublished);
-        currentVersionId = firstPub ? firstPub.id : loadedVersionsList[0].id;
-        localStorage.setItem("schoolreglement_active_version_id_v1", currentVersionId);
-      }
-      setActiveVersionId(currentVersionId);
-
-      let loadedSections: RegulationSection[] = [];
-      try {
-        loadedSections = await fetchSectionsForVersion(currentVersionId);
-      } catch (e) {
-        console.warn("Could not fetch sections from Firestore, using defaults instead:", e);
-        loadedSections = defaultSections;
-      }
-      
-      // Force importing the correct PDF contents and overwriting any existing stale database records
+      // 2. Process Sections
       const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v5");
       if (!hasPdfImportRun) {
         loadedSections = defaultSections;
@@ -282,15 +304,10 @@ export default function App() {
       } else {
         setSections(loadedSections);
       }
-      
-      let config: PDFConfig | null = null;
-      try {
-        config = await fetchPDFConfig();
-      } catch (e) {
-        console.warn("Could not fetch PDF configuration from Firestore:", e);
-      }
-      if (!config) {
-        config = {
+
+      // 3. Process PDF Config
+      if (!loadedPDFConfig) {
+        loadedPDFConfig = {
           schoolLogo: "",
           h1Size: 24,
           h2Size: 20,
@@ -301,28 +318,47 @@ export default function App() {
           headerText: "",
           footerText: ""
         };
-        savePDFConfig(config).catch(err => {
+        savePDFConfig(loadedPDFConfig).catch(err => {
           console.warn("Background save of new PDF configuration failed:", err);
         });
       }
-      setPdfConfig(config);
+      setPdfConfig(loadedPDFConfig);
 
-      // Load custom board if saved in localStorage and auto-migrate if needed
-      const savedBoard = localStorage.getItem("schoolreglement_board_v1");
-      if (savedBoard) {
-        try {
-          const parsed = JSON.parse(savedBoard);
-          if (!parsed.logoUrl || parsed.logoUrl.includes("Logo_Oost-Vlaanderen.svg")) {
-            parsed.logoUrl = defaultSchoolBoard.logoUrl;
-            localStorage.setItem("schoolreglement_board_v1", JSON.stringify(parsed));
+      // 4. Process Board
+      let finalBoardFetched = loadedBoardObj;
+      if (!finalBoardFetched) {
+        const savedBoard = localStorage.getItem("schoolreglement_board_v1");
+        if (savedBoard) {
+          try {
+            finalBoardFetched = JSON.parse(savedBoard);
+          } catch {
+            finalBoardFetched = defaultSchoolBoard;
           }
-          setBoard(parsed);
-        } catch {
-          setBoard(defaultSchoolBoard);
+        } else {
+          finalBoardFetched = defaultSchoolBoard;
         }
-      } else {
-        setBoard(defaultSchoolBoard);
       }
+
+      if (finalBoardFetched) {
+        if (!finalBoardFetched.logoUrl || finalBoardFetched.logoUrl.includes("Logo_Oost-Vlaanderen.svg")) {
+          finalBoardFetched.logoUrl = defaultSchoolBoard.logoUrl;
+        }
+        try {
+          localStorage.setItem("schoolreglement_board_v1", JSON.stringify(finalBoardFetched));
+          saveBoard(finalBoardFetched).catch(err => console.warn("Background save of Board config failed:", err));
+        } catch (e) {
+          console.warn(e);
+        }
+        setBoard(finalBoardFetched);
+      }
+
+      setLoadingPhase("Succesvol geladen!");
+      
+      // Fast, premium visual transition delay (~350ms) to let the custom loader animate out nicely
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 350);
+
     })();
   }, []);
 
@@ -507,6 +543,105 @@ export default function App() {
           accent-color: var(--primary-color) !important;
         }
       `}</style>
+
+      {/* Global Loading Curtain */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            className="fixed inset-0 bg-[#FAF9F6] flex flex-col items-center justify-center z-[9999] p-6 text-center select-none"
+            style={{ 
+              background: "radial-gradient(circle at center, #FAF9F6 0%, #F5F3ED 100%)" 
+            }}
+          >
+            <div className="max-w-md w-full flex flex-col items-center">
+              {/* Spinner & Shield Outer Ring */}
+              <div className="relative mb-8 w-20 h-20 flex items-center justify-center">
+                {/* Glowing Aura */}
+                <span 
+                  className="absolute inset-0 rounded-full blur-xl opacity-35 animate-pulse" 
+                  style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+                />
+                
+                {/* Rotating Border Ring */}
+                <motion.div 
+                  className="absolute inset-0 rounded-full border-4 border-t-transparent border-r-transparent"
+                  style={{ 
+                    borderColor: board.primaryColor || '#D6AD00',
+                    borderTopColor: "transparent",
+                    borderRightColor: "transparent"
+                  }}
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                />
+
+                {/* Subdued rotating ring background */}
+                <div 
+                  className="absolute inset-0 rounded-full border-4 opacity-15"
+                  style={{ borderColor: board.primaryColor || '#D6AD00' }}
+                />
+
+                {/* Shield badge inner */}
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-md bg-white text-[#2E2E2E]"
+                  style={{ color: board.primaryColor || '#D6AD00' }}
+                >
+                  <Shield size={24} className="animate-pulse stroke-[2]" />
+                </div>
+              </div>
+
+              {/* Title & Board Label */}
+              <motion.h1 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                className="text-lg font-sans font-extrabold tracking-widest text-[#2E2E2E] uppercase flex items-center gap-1.5"
+              >
+                <span>{board.name || "RAAD VAN BESTUUR"}</span>
+              </motion.h1>
+
+              <motion.p 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="text-xs text-gray-500 font-sans tracking-wide mt-1 font-medium italic"
+              >
+                Digitaal Schoolreglement Portaal
+              </motion.p>
+
+              {/* Progress Line */}
+              <div className="w-52 h-1 bg-gray-200/60 rounded-full mt-8 overflow-hidden relative">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+                  initial={{ width: "10%" }}
+                  animate={{ 
+                    width: loadingPhase === "Succesvol geladen!" ? "100%" : "75%" 
+                  }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              </div>
+
+              {/* Loading subtext / phases */}
+              <motion.div 
+                key={loadingPhase}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
+                className="text-[11px] text-gray-600 font-sans mt-3.5 tracking-wide flex items-center gap-2 bg-white/60 border border-gray-150/40 px-3 py-1.5 rounded-full shadow-sm"
+              >
+                {loadingPhase !== "Succesvol geladen!" && (
+                  <Loader2 size={12} className="animate-spin text-amber-500" />
+                )}
+                <span className="font-medium font-mono">{loadingPhase}</span>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 2. Subtle Scroll Progress Bar (Voortgangsbalk) */}
       <div className="fixed top-0 left-0 w-full h-[4px] bg-gray-200/40 z-50 no-print">

@@ -1,9 +1,11 @@
 import React from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig } from "../types";
 import LucideIcon from "./LucideIcon";
-import { Eye, Printer, Layout, X, Sliders, Type, FileCheck, CheckCircle2 } from "lucide-react";
+import { Eye, Printer, Layout, X, Sliders, Type, FileCheck, CheckCircle2, Loader2, Check, FileText, Sparkles, Download } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 // @ts-ignore
 import html2pdf from "html2pdf.js";
+import { markdownToHtml } from "../lib/richText";
 
 interface PDFExporterProps {
   board: SchoolBoard;
@@ -197,6 +199,52 @@ const getCORSFriendlyUrl = (url: string) => {
   return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
 };
 
+const getChapterIconName = (title: string): string => {
+  const norm = title ? title.toLowerCase() : "";
+  
+  if (norm.includes("algemeen") || norm.includes("inleiding") || norm.includes("introductie") || norm.includes("visie") || norm.includes("missie") || norm.includes("uitgangspunt")) {
+    return "BookOpen";
+  }
+  if (norm.includes("inschrijv") || norm.includes("toelat") || norm.includes("aanmeld") || norm.includes("capaci")) {
+    return "UserPlus";
+  }
+  if (norm.includes("aanwezig") || norm.includes("afwezig") || norm.includes("te laat") || norm.includes("telaat") || norm.includes("ziek") || norm.includes("verlof")) {
+    return "Clock";
+  }
+  if (norm.includes("zorg") || norm.includes("begeleid") || norm.includes("clb") || norm.includes("hulp") || norm.includes("ondersteun")) {
+    return "Heart";
+  }
+  if (norm.includes("leefregel") || norm.includes("gedrag") || norm.includes("pesten") || norm.includes("orde") || norm.includes("straf") || norm.includes("sanctie") || norm.includes("steward") || norm.includes("respect") || norm.includes("tucht")) {
+    return "Scale";
+  }
+  if (norm.includes("evalu") || norm.includes("examen") || norm.includes("toets") || norm.includes("rapport") || norm.includes("getuigschrift") || norm.includes("studie")) {
+    return "GraduationCap";
+  }
+  if (norm.includes("kost") || norm.includes("geld") || norm.includes("tarief") || norm.includes("bijdrage") || norm.includes("financi") || norm.includes("rekening") || norm.includes("factuur")) {
+    return "Coins";
+  }
+  if (norm.includes("uitstap") || norm.includes("reis") || norm.includes("klasse") || norm.includes("sport") || norm.includes("activiteit") || norm.includes("excursie")) {
+    return "Compass";
+  }
+  if (norm.includes("commun") || norm.includes("ouder") || norm.includes("contact") || norm.includes("overleg") || norm.includes("klacht")) {
+    return "MessageSquare";
+  }
+  if (norm.includes("veilig") || norm.includes("ongeval") || norm.includes("ehbo") || norm.includes("brand") || norm.includes("verzeker")) {
+    return "ShieldAlert";
+  }
+  if (norm.includes("gsm") || norm.includes("smartphone") || norm.includes("computer") || norm.includes("internet") || norm.includes("tablet") || norm.includes("digitaal") || norm.includes("wifi")) {
+    return "Smartphone";
+  }
+  if (norm.includes("uniform") || norm.includes("kled") || norm.includes("uiterlijk")) {
+    return "Shirt";
+  }
+  if (norm.includes("huiswerk") || norm.includes("agenda") || norm.includes("planner")) {
+    return "CalendarDays";
+  }
+  
+  return "BookOpen";
+};
+
 export default function PDFExporter({
   board,
   activeSchool,
@@ -248,11 +296,22 @@ export default function PDFExporter({
   ];
 
   const [generating, setGenerating] = React.useState(false);
-  const [progressText, setProgressText] = React.useState("");
+  const [progressPercent, setProgressPercent] = React.useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
+
+  const generationSteps = [
+    { title: "Document-inhoud voorbereiden", desc: "Samenstellen en structureren van alle geselecteerde reglementartikelen..." },
+    { title: "Huisstijl en kleuren optimaliseren", desc: "Omzetten van oklch kleurenschema's en logo-indelingen..." },
+    { title: "Lettertypes & marges uitlijnen", desc: "Marges van 15mm en lettergrootte van " + config.bodySize + "pt synchroniseren..." },
+    { title: "Inhoudstabel & pagina's splitsen", desc: "Hoofdstukpagina's berekenen en paginascheidingen toepassen..." },
+    { title: "PDF genereren & downloaden", desc: "Vectoriële PDF-canvas opbouwen via de html2pdf rendering-engine..." },
+    { title: "Download voltooid", desc: "De geoptimaliseerde PDF is succesvol gegenereerd en bewaard!" }
+  ];
 
   const exportPDF = () => {
     setGenerating(true);
-    setProgressText("Schoolreglement formatteren...");
+    setProgressPercent(2);
+    setCurrentStepIndex(0);
 
     const element = document.getElementById("pdf-printable-frame");
     if (!element) {
@@ -260,6 +319,28 @@ export default function PDFExporter({
       setGenerating(false);
       return;
     }
+
+    // Dynamic interval to simulate continuous high-fidelity process ticking
+    let simulatedProgress = 2;
+    const intervalId = setInterval(() => {
+      if (simulatedProgress < 95) {
+        const increment = simulatedProgress < 40 ? Math.floor(Math.random() * 4) + 3 : Math.floor(Math.random() * 2) + 1;
+        simulatedProgress = Math.min(95, simulatedProgress + increment);
+        setProgressPercent(simulatedProgress);
+
+        if (simulatedProgress < 18) {
+          setCurrentStepIndex(0);
+        } else if (simulatedProgress < 38) {
+          setCurrentStepIndex(1);
+        } else if (simulatedProgress < 58) {
+          setCurrentStepIndex(2);
+        } else if (simulatedProgress < 78) {
+          setCurrentStepIndex(3);
+        } else {
+          setCurrentStepIndex(4);
+        }
+      }
+    }, 150);
 
     const opt = {
       margin: [15, 15, 15, 15] as [number, number, number, number], // 1.5cm (15mm) top, left, bottom, right in mm
@@ -280,8 +361,6 @@ export default function PDFExporter({
         mode: ['css', 'legacy'] 
       }
     };
-
-    setProgressText("PDF opbouwen en downloaden...");
 
     // Convert oklch colors on elements directly to static rgb/rgba inline styles
     // to bypass the html2canvas parsing errors. This is much more stable than proxying getComputedStyle.
@@ -337,16 +416,55 @@ export default function PDFExporter({
     };
 
     // @ts-ignore
-    html2pdf()
+    const pdfPromise = html2pdf()
       .set(opt as any)
       .from(element)
+      .toPdf()
+      .get('pdf')
+      .then((pdf: any) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          
+          const footerTemplate = config.footerText !== undefined ? config.footerText : "Pagina [page] van [topage]";
+          if (footerTemplate) {
+            let pageText = footerTemplate;
+            pageText = pageText.replace(/\[page\]/g, String(i));
+            pageText = pageText.replace(/\[topage\]/g, String(totalPages));
+            
+            // Draw dynamic footers on all pages except cover page (page 1)
+            if (i > 1 || totalPages === 1) {
+              pdf.setFont("helvetica", "normal");
+              pdf.setFontSize(8);
+              pdf.setTextColor(110, 110, 110);
+              
+              // Draw board name on the left in the footer
+              pdf.text(board.name, 15, 287);
+              
+              // Draw page numbers on the right
+              pdf.text(pageText, 195, 287, { align: "right" });
+            }
+          }
+        }
+      });
+
+    // @ts-ignore
+    (pdfPromise as any)
       .save()
       .then(() => {
+        clearInterval(intervalId);
+        setProgressPercent(100);
+        setCurrentStepIndex(5); // Success step
+        
         restoreStyles();
-        setGenerating(false);
-        onClose();
+        
+        setTimeout(() => {
+          setGenerating(false);
+          onClose();
+        }, 900);
       })
       .catch((err: any) => {
+        clearInterval(intervalId);
         console.error("PDF generator error:", err);
         restoreStyles();
         // Fallback to basic print
@@ -375,26 +493,140 @@ export default function PDFExporter({
     >
       {/* Visual progress loader spinner */}
       {(generating || (immediate && !generating)) && (
-        <div className="fixed inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in no-print">
-          <div className="relative flex items-center justify-center h-24 w-24 mb-6">
-            <div 
-              className="absolute inset-0 rounded-full border-4 opacity-20 animate-ping"
-              style={{ borderColor: board.primaryColor || '#D6AD00' }}
-            ></div>
-            <div 
-              className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4"
-              style={{ borderColor: board.primaryColor || '#D6AD00' }}
-            ></div>
+        <div 
+          className="fixed inset-0 bg-[#FAF9F6]/98 z-[10000] flex flex-col items-center justify-center p-6 text-center select-none no-print overflow-y-auto"
+          style={{ 
+            background: "radial-gradient(circle at center, #FAF9F6 0%, #F5F3ED 100%)" 
+          }}
+        >
+          <div className="max-w-md w-full flex flex-col items-center animate-fade-in">
+            {/* Spinning Shield with percentage indicator */}
+            <div className="relative mb-6 w-24 h-24 flex items-center justify-center">
+              {/* Pulsing glow aura */}
+              <span 
+                className="absolute inset-0 rounded-full blur-xl opacity-30 animate-pulse" 
+                style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+              />
+              
+              {/* Outer rotating color ring */}
+              <div 
+                className="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin"
+                style={{ 
+                  borderColor: board.primaryColor || '#D6AD00',
+                  borderTopColor: "transparent",
+                  borderRightColor: "transparent"
+                }}
+              />
+
+              {/* Subdued ring background */}
+              <div 
+                className="absolute inset-0 rounded-full border-4 opacity-10"
+                style={{ borderColor: board.primaryColor || '#D6AD00' }}
+              />
+
+              {/* Central text displaying percentage */}
+              <div className="w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-lg bg-white text-[#2E2E2E]">
+                {currentStepIndex === 5 ? (
+                  <CheckCircle2 size={28} className="text-emerald-500 animate-bounce stroke-[2.5]" />
+                ) : (
+                  <div className="text-center">
+                    <span className="text-lg font-mono font-black tracking-tighter text-[#2E2E2E]">
+                      {progressPercent}
+                    </span>
+                    <span className="text-[9px] font-sans font-bold text-gray-400 block -mt-1 leading-none">%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Title & Underline */}
+            <h3 className="text-sm font-display font-black tracking-wider text-[#2E2E2E] uppercase flex items-center gap-1.5 justify-center">
+              <FileText size={16} className="text-gray-400" />
+              <span>REGLEMENT EXPORTEREN</span>
+            </h3>
+            
+            <p className="text-xs text-gray-500 font-sans tracking-wide mt-1 italic">
+              {activeSchool.name}
+            </p>
+
+            {/* High fidelity horizontal progress bar */}
+            <div className="w-64 h-1.5 bg-gray-200/60 rounded-full mt-6 overflow-hidden relative border border-white">
+              <div
+                className="h-full rounded-full transition-all duration-300 ease-out"
+                style={{ 
+                  backgroundColor: board.primaryColor || '#D6AD00',
+                  width: `${progressPercent}%`
+                }}
+              />
+            </div>
+
+            {/* Visual textual progress percentage indicator */}
+            <p className="text-[11px] font-mono font-bold mt-2 text-[#2E2E2E] tracking-wider animate-pulse">
+              {currentStepIndex === 5 ? (
+                <span className="text-emerald-600 font-sans font-extrabold uppercase">Succesvol gedownload!</span>
+              ) : (
+                <span>Genereren: <span className="font-black" style={{ color: board.primaryColor || '#D6AD00' }}>{progressPercent}%</span>...</span>
+              )}
+            </p>
+
+            {/* Checklist of steps */}
+            <div className="w-full max-w-sm bg-white border border-gray-150 rounded-2xl p-5 shadow-sm text-left mt-6 space-y-3.5">
+              <h4 className="text-[10px] uppercase font-mono tracking-wider text-gray-400 font-bold mb-1 flex items-center justify-between">
+                <span>Generatieproces stappen</span>
+                <span className="font-mono text-[9px] text-[#D6AD00] bg-[#D6AD00]/5 px-2 py-0.5 rounded-full font-semibold">
+                  stap {Math.min(6, currentStepIndex + 1)}/6
+                </span>
+              </h4>
+              
+              <div className="h-px bg-gray-105 my-2" />
+
+              {generationSteps.map((step, idx) => {
+                const isCompleted = idx < currentStepIndex;
+                const isActive = idx === currentStepIndex;
+                const isPending = idx > currentStepIndex;
+
+                return (
+                  <div key={idx} className="flex items-start gap-3 transition-all duration-300">
+                    <div className="mt-0.5 animate-fade-in">
+                      {isCompleted ? (
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                          <Check size={10} className="stroke-[3]" />
+                        </div>
+                      ) : isActive ? (
+                        <div 
+                          className="w-4 h-4 rounded-full flex items-center justify-center animate-pulse"
+                          style={{ backgroundColor: `${board.primaryColor || '#D6AD00'}22`, border: `1.5px solid ${board.primaryColor || '#D6AD00'}` }}
+                        >
+                          <div 
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[11px] font-semibold leading-relaxed ${isCompleted ? 'text-gray-400 font-medium' : isActive ? 'text-gray-900 font-extrabold' : 'text-gray-400 font-medium'}`}>
+                        {step.title}
+                      </p>
+                      {isActive && (
+                        <p className="text-[10.5px] text-gray-500 mt-0.5 max-w-sm leading-relaxed animate-fade-in font-sans font-medium">
+                          {step.desc}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sparkle decorative tagline */}
+            <p className="text-[10px] text-gray-400 font-sans mt-6 flex items-center gap-1.5 justify-center">
+              <Sparkles size={11} className="text-amber-500 animate-pulse" />
+              <span>Geproduceerd met vectorieel kwaliteitsbeheer</span>
+            </p>
           </div>
-          
-          <p 
-            className="text-base font-display font-semibold tracking-tight text-gray-900 mb-2"
-          >
-            Schoolreglement Downloaden...
-          </p>
-          <p className="text-xs text-gray-450 font-mono max-w-sm leading-normal">
-            {progressText || "Momenteel wordt uw gepersonaliseerde schoolreglement als PDF-bestand samengesteld en klaargemaakt voor directe download."}
-          </p>
         </div>
       )}
 
@@ -525,6 +757,22 @@ export default function PDFExporter({
                   onChange={(e) => onUpdateConfig({ ...config, headerText: e.target.value })}
                   className="w-full px-2.5 py-1.5 rounded border border-gray-300 text-xs focus:border-[#D6AD00]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase font-mono text-gray-400 mb-1">
+                  Voettekst & Paginanummering (Onderaan pagina)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Bijv. Pagina [page] van [topage]"
+                  value={config.footerText || ""}
+                  onChange={(e) => onUpdateConfig({ ...config, footerText: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded border border-gray-300 text-xs focus:border-[#D6AD00]"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 leading-normal font-sans">
+                  Gebruik <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">[page]</code> voor het huidige paginanummer en <code className="bg-gray-200 px-1 rounded text-gray-700 font-mono text-[9.5px]">[topage]</code> voor het totale aantal pagina's. Wis de invoer om paginanummers te verbergen.
+                </p>
               </div>
 
               <div>
@@ -734,7 +982,17 @@ export default function PDFExporter({
                         : "font-semibold text-gray-900 pt-2 border-t border-gray-100 first:border-0";
                     return (
                       <div key={sec.id} className={`${indent} flex items-center justify-between`}>
-                        <span>{sec.sectionNumber} {sec.title}</span>
+                        <span className="flex items-center gap-2">
+                          {sec.level === 1 && (
+                            <span 
+                              className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-white shrink-0"
+                              style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+                            >
+                              <LucideIcon name={sec.iconName || sec.icon || getChapterIconName(sec.title)} size={11} className="stroke-[2.5]" />
+                            </span>
+                          )}
+                          <span>{sec.sectionNumber} {sec.title}</span>
+                        </span>
                       </div>
                     );
                   })}
@@ -757,12 +1015,25 @@ export default function PDFExporter({
                     
                     {/* Variable Typography headers based on levels */}
                     {sec.level === 1 ? (
-                      <h3
-                        className="font-bold border-b border-gray-300 pb-1 mt-6 text-[#2E2E2E] uppercase font-display"
-                        style={{ fontSize: `${config.h1Size}pt` }}
-                      >
-                        {sec.sectionNumber} &mdash; {sec.title}
-                      </h3>
+                      <div className="flex items-center gap-3.5 pt-8 pb-3 border-b-2 border-gray-200 mb-6 avoid-page-break-inside">
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full shadow-sm text-white shrink-0 font-bold" 
+                          style={{ backgroundColor: board.primaryColor || '#D6AD00' }}
+                        >
+                          <LucideIcon name={sec.iconName || sec.icon || getChapterIconName(sec.title)} size={18} className="stroke-[2.5]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-mono font-bold tracking-widest text-gray-400 block uppercase mb-0.5">
+                            HOOFDSTUK {sec.sectionNumber}
+                          </span>
+                          <h3
+                            className="font-extrabold text-[#2E2E2E] uppercase font-display leading-tight m-0 mt-0 border-0 pb-0"
+                            style={{ fontSize: `${config.h1Size}pt` }}
+                          >
+                            {sec.title}
+                          </h3>
+                        </div>
+                      </div>
                     ) : sec.level === 2 ? (
                       <h4
                         className="font-semibold text-gray-800 mt-4 font-sans"
@@ -779,9 +1050,10 @@ export default function PDFExporter({
                       </h5>
                     )}
 
-                    <p className="text-gray-600 whitespace-pre-wrap leading-relaxed mt-1 text-[11px]">
-                      {text}
-                    </p>
+                    <div 
+                      className="text-gray-650 leading-relaxed mt-1 text-[11px]"
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(text) }}
+                    />
                   </div>
                 );
               })}
@@ -790,7 +1062,11 @@ export default function PDFExporter({
             {/* Footer markers */}
             <div className="border-t border-gray-200 pt-3 mt-10 text-[8px] text-gray-400 font-mono flex justify-between">
               <span>{board.name}</span>
-              <span>{config.footerText.replace("[page]", "1").replace("[topage]", "1")}</span>
+              <span>
+                {config.footerText 
+                  ? config.footerText.replace("[page]", "1").replace("[topage]", "3") + " (Voorbeeld)"
+                  : "Pagina 1 van 3 (Voorbeeld)"}
+              </span>
             </div>
 
           </div>
