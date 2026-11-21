@@ -62,7 +62,7 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
     if (collection === "sections" && !keyVersion) return jsonResponse({ error: "Een schooljaarversie is vereist." }, 400);
 
     try {
-      const statements = [];
+      const statements: D1Statement[] = [];
       if (body?.replace === true) {
         statements.push(collection === "sections"
           ? env.DB.prepare("DELETE FROM app_records WHERE collection = ? AND version_id = ?").bind(collection, keyVersion)
