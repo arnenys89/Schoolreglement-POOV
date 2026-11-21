@@ -432,7 +432,7 @@ export default function SectionItem({
       transition={{ duration: 0.5 }}
       id={`section-view-${section.id}`}
       style={getStyle()}
-      className={`relative mb-5 p-4 md:p-6 bg-white border rounded-r-xl transition-all duration-700 ease-in-out ${
+      className={`rp-regulation-card relative mb-5 p-4 md:p-6 bg-white border rounded-r-xl transition-all duration-300 ease-in-out ${
         isEditing
           ? "border-amber-400 ring-1 ring-amber-400 shadow-md"
           : !isVisibleForActiveSchool
