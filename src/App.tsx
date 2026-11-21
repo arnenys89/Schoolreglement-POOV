@@ -193,7 +193,7 @@ export default function App() {
       let loadedVersionsList: RegulationVersion[] = await fetchVersions().catch((error) => { console.warn("Schooljaarversies konden niet uit Cloudflare D1 worden geladen:", error); return []; });
       if (loadedVersionsList.length === 0) {
         loadedVersionsList = [{ id: "2026-2027", schoolYear: "2026-2027", isPublished: true, createdAt: new Date().toISOString() }];
-        await saveVersions(loadedVersionsList);
+        saveVersions(loadedVersionsList).catch((error) => console.warn("Standaardversie wordt bij de eerste beheerdersactie in Cloudflare D1 opgeslagen:", error));
       }
       setVersions(loadedVersionsList);
 
