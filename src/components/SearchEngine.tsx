@@ -16,7 +16,7 @@ export default function SearchEngine({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RegulationSection[]>([]);
   const [isFocused, setIsFocused] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Common quick-search terms for parents as recommended
   const parentsCommonSearches = [
@@ -35,7 +35,7 @@ export default function SearchEngine({
       return;
     }
 
-    const filtered = sections.filter((sec) => {
+    const filtered = sections.filter((sec) => sec.visibleSchools.includes(activeSchoolId)).filter((sec) => {
       // 1. Text is either global text, or active school's specifically overridden text.
       const textToSearch = (sec.isSchoolSpecificText && sec.schoolSpecificText[activeSchoolId])
         ? sec.schoolSpecificText[activeSchoolId]
@@ -63,7 +63,7 @@ export default function SearchEngine({
         <div className="flex items-center gap-2">
           <Sparkles className="text-[#D6AD00] group-hover:scale-110 transition-transform duration-150" size={18} />
           <h2 className="text-[#2E2E2E] font-display font-semibold text-sm tracking-wide">
-            Snelzoeker Hulp voor Ouders
+            Zoek in het reglement
           </h2>
         </div>
         <div className="text-gray-400 group-hover:text-gray-600 transition-colors">
@@ -74,7 +74,7 @@ export default function SearchEngine({
       {isExpanded && (
         <div className="mt-4 border-t border-gray-100 pt-4 animate-fade-in space-y-4">
           <p className="text-xs text-gray-500 leading-relaxed">
-            Typ een onderwerp of trefwoord in (zoals &lsquo;laptop&rsquo;, &lsquo;attest&rsquo; of &lsquo;kosten&rsquo;) om direct te zien wat de regelgeving is. Klik op een veelgesteld onderwerp hieronder om meteen te zoeken.
+            Zoek op een trefwoord, onderwerp of artikelnummer. Kies daarna een resultaat om meteen naar de juiste passage te gaan.
           </p>
 
           {/* Input Group */}
@@ -87,7 +87,7 @@ export default function SearchEngine({
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
               onFocus={() => setIsFocused(true)}
-              placeholder="Waar bent u naar op zoek? (bijv. 'laptop' of 'afwezigheid')..."
+              placeholder="Zoek bijvoorbeeld op laptop, afwezigheid of kosten..."
               className="w-full pl-11 pr-10 py-3 rounded-lg border border-gray-300 focus:border-[#D6AD00] focus:ring-1 focus:ring-[#D6AD00] text-sm text-gray-800 placeholder-gray-400 transition-all font-sans bg-gray-50/50"
               id="search-input-field"
             />
