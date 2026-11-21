@@ -216,3 +216,145 @@ html {
   margin-bottom: 1.5rem !important;
 }
 
+
+
+/* Richtpunt Bestelplatform design system – shared application shell */
+:root {
+  --rp-yellow: #d7ad01;
+  --rp-yellow-soft: #fbf5dc;
+  --rp-ink: #292929;
+  --rp-gray: #555555;
+  --rp-muted: #85857f;
+  --rp-line: #e8e8e3;
+  --rp-canvas: #f7f7f4;
+}
+html, body, #root { min-height: 100%; }
+body { background: var(--rp-canvas); color: var(--rp-ink); }
+.schoolreg-app { min-height: 100vh; background: var(--rp-canvas); color: var(--rp-ink); }
+.schoolreg-header {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0;
+  gap: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--rp-line);
+  box-shadow: 0 1px 2px rgba(0,0,0,.025);
+}
+.schoolreg-header-main {
+  min-height: 65px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 10px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.schoolreg-brand { display:flex; align-items:center; gap:11px; min-width:245px; }
+.schoolreg-brand-mark,.schoolreg-sidebar-mark {
+  display:grid; place-items:center; flex:0 0 auto;
+  width:36px; height:36px; background:var(--rp-yellow); color:#211c09;
+  font-size:23px; font-weight:700; line-height:1; border-radius:3px;
+}
+.schoolreg-brand-copy { display:flex; flex-direction:column; min-width:0; }
+.schoolreg-brand-overline { color:#888; font-size:8px; letter-spacing:1.45px; line-height:1.2; }
+.schoolreg-brand-copy strong { color:var(--rp-ink); font-size:16px; font-weight:700; line-height:1.25; }
+.schoolreg-brand-copy small { color:#888; font-size:9px; margin-top:2px; }
+.schoolreg-header-context { display:flex; align-items:center; justify-content:flex-end; gap:18px; min-width:0; }
+.schoolreg-context-school { display:flex; align-items:center; gap:9px; min-width:0; }
+.schoolreg-context-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:7px; color:#927300; background:var(--rp-yellow-soft); }
+.schoolreg-context-school div { display:flex; flex-direction:column; min-width:0; }
+.schoolreg-context-label { color:#92928c; font-size:8px; font-weight:700; letter-spacing:1.1px; }
+.schoolreg-context-school strong { color:#333; font-size:12px; font-weight:700; white-space:nowrap; }
+.schoolreg-version-select { display:flex; align-items:center; gap:7px; margin:0; color:#777; font-size:10px; white-space:nowrap; }
+.schoolreg-version-select select { appearance:none; max-width:125px; padding:7px 25px 7px 9px; margin:0; border:1px solid #deded8; border-radius:5px; background:#fff; color:#333; font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.schoolreg-version-select svg { margin-left:-25px; pointer-events:none; color:#777; }
+.schoolreg-admin-tools { display:flex; align-items:center; gap:8px; }
+.schoolreg-admin-pill { display:inline-flex; align-items:center; gap:5px; padding:7px 10px; border-radius:18px; background:var(--rp-yellow-soft); color:#755d00; font-size:9px; font-weight:700; white-space:nowrap; }
+.schoolreg-admin-exit { display:inline-flex; align-items:center; gap:6px; padding:8px 11px; border:1px solid #deded8; border-radius:5px; background:#fff; color:#555; font-size:10px; cursor:pointer; }
+.schoolreg-admin-exit:hover { border-color:var(--rp-yellow); background:#fffdf5; }
+.schoolreg-campus-nav {
+  min-height:43px; max-width:1440px; margin:0 auto; padding:0 30px 10px;
+  display:flex; align-items:center; gap:7px; border-top:1px solid #f0f0ec;
+}
+.schoolreg-nav-caption { display:inline-flex; align-items:center; gap:6px; margin-right:5px; color:#999; font-size:8px; font-weight:700; letter-spacing:1.1px; white-space:nowrap; }
+.schoolreg-nav-caption svg { color:#a98400; }
+.schoolreg-campus-tab {
+  display:inline-flex; align-items:center; justify-content:center; min-height:28px; padding:6px 12px;
+  border:1px solid #e6e6e0; border-radius:5px; background:#fff; color:#666;
+  font-size:10px; font-weight:500; cursor:pointer; transition:background .15s,border-color .15s,color .15s;
+}
+.schoolreg-campus-tab:hover { border-color:#d7ad01; background:#fffdf5; color:#292929; }
+.schoolreg-campus-tab.active { border-color:#e8d98f; border-left:3px solid var(--rp-yellow); background:var(--rp-yellow-soft); color:#29230e; font-weight:700; }
+.schoolreg-campus-spacer { flex:1; }
+.schoolreg-school-link { display:inline-flex; align-items:center; gap:5px; color:#8a6d00; font-size:9px; text-decoration:none; white-space:nowrap; }
+.schoolreg-school-link:hover { text-decoration:underline; }
+.schoolreg-main { align-items:stretch; min-height:calc(100vh - 108px); background:var(--rp-canvas); }
+.schoolreg-sidebar {
+  position:sticky !important; top:108px !important; align-self:flex-start;
+  height:calc(100vh - 108px); max-height:calc(100vh - 108px);
+  background:#fff !important; border-right:1px solid var(--rp-line) !important;
+  box-shadow:1px 0 2px rgba(0,0,0,.015) !important;
+  padding:18px 15px 22px !important; gap:12px !important;
+  transition:width .25s ease;
+}
+.schoolreg-sidebar-open { width:245px !important; }
+.schoolreg-sidebar-closed { width:65px !important; padding-left:8px !important; padding-right:8px !important; }
+.schoolreg-sidebar-brand { display:flex; align-items:center; gap:10px; min-height:38px; margin:0 4px 8px; }
+.schoolreg-sidebar-mark { width:34px; height:34px; font-size:21px; }
+.schoolreg-sidebar-brand strong { display:block; color:#292929; font-size:13px; line-height:1.2; }
+.schoolreg-sidebar-brand small { display:block; color:#999; font-size:9px; letter-spacing:1.1px; text-transform:uppercase; margin-top:3px; }
+.schoolreg-sidebar-toggle-row { margin-bottom:0; }
+.schoolreg-sidebar-toggle-row button { border-radius:5px !important; }
+.schoolreg-content {
+  width:100%; max-width:1250px !important; margin-left:auto !important; margin-right:auto !important;
+  padding:34px 36px !important; gap:18px !important;
+}
+.schoolreg-content > * { min-width:0; }
+.schoolreg-content .rounded-2xl { border-radius:9px !important; }
+.schoolreg-content .rounded-xl { border-radius:9px !important; }
+.schoolreg-content .shadow-xs,.schoolreg-content .shadow-sm { box-shadow:0 1px 3px rgba(0,0,0,.035) !important; }
+.schoolreg-content button { transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s; }
+.schoolreg-content input:not([type=checkbox]):not([type=radio]),
+.schoolreg-content select,.schoolreg-content textarea {
+  border-radius:5px;
+}
+.schoolreg-content input:focus,.schoolreg-content select:focus,.schoolreg-content textarea:focus {
+  outline:none; border-color:var(--rp-yellow); box-shadow:0 0 0 2px rgba(215,173,1,.12);
+}
+.schoolreg-app .bg-gray-50 { background-color:#f7f7f4; }
+.schoolreg-app .border-gray-200 { border-color:#e8e8e3; }
+.schoolreg-app .text-gray-800 { color:#292929; }
+@media (max-width:1100px) {
+  .schoolreg-header-main { padding-left:20px; padding-right:20px; gap:12px; }
+  .schoolreg-campus-nav { padding-left:20px; padding-right:20px; }
+  .schoolreg-header-context { gap:10px; }
+  .schoolreg-admin-pill { display:none; }
+  .schoolreg-content { padding:26px 22px !important; }
+}
+@media (max-width:1023px) {
+  .schoolreg-sidebar { display:none !important; }
+  .schoolreg-content { max-width:100% !important; padding:22px 18px !important; }
+}
+@media (max-width:700px) {
+  .schoolreg-header-main { min-height:60px; padding:9px 14px; align-items:flex-start; }
+  .schoolreg-brand { min-width:0; }
+  .schoolreg-brand-mark { width:32px; height:32px; font-size:20px; }
+  .schoolreg-brand-overline { font-size:7px; letter-spacing:.8px; }
+  .schoolreg-brand-copy strong { font-size:14px; }
+  .schoolreg-brand-copy small { display:none; }
+  .schoolreg-header-context { gap:7px; flex-direction:column; align-items:flex-end; }
+  .schoolreg-context-school { display:none; }
+  .schoolreg-version-select { font-size:9px; }
+  .schoolreg-version-select select { max-width:105px; padding:6px 22px 6px 7px; font-size:10px; }
+  .schoolreg-admin-exit { padding:6px 8px; font-size:9px; }
+  .schoolreg-campus-nav { padding:0 14px 9px; gap:5px; overflow-x:auto; flex-wrap:nowrap; }
+  .schoolreg-nav-caption { display:none; }
+  .schoolreg-campus-tab { flex:0 0 auto; padding:6px 10px; }
+  .schoolreg-campus-spacer,.schoolreg-school-link { display:none; }
+  .schoolreg-content { padding:18px 13px !important; }
+}
