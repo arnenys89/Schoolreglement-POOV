@@ -38,9 +38,13 @@ body{font-family:"Meta Pro Light","FF Meta Pro Light","Fira Sans",Arial,sans-ser
 .rp-admin-context{display:flex;align-items:center;gap:9px;min-height:38px;margin-left:245px;padding:7px 34px;background:#fffaf0;border-bottom:1px solid #eee2b6;color:#755d00;font-size:10px}
 .rp-context-link{margin-left:auto;color:#927300;font-family:monospace;font-size:9px;overflow-wrap:anywhere}
 .rp-layout{display:flex;min-height:calc(100vh - 65px);margin-left:245px;align-items:stretch}
+.schoolreg-app:has(.rp-sidebar-collapsed) .rp-layout{margin-left:65px}
+.schoolreg-app:has(.rp-sidebar-collapsed) .rp-topbar,.schoolreg-app:has(.rp-sidebar-collapsed) .rp-admin-context{margin-left:65px}
+.schoolreg-app:has(.rp-admin-context) .rp-sidebar{top:103px}
 .rp-sidebar{position:fixed;z-index:35;left:0;top:65px;bottom:0;width:245px;display:flex;flex-direction:column;overflow:hidden;padding:23px 15px 18px;background:#fff;border-right:1px solid var(--rp-line);transition:width .2s ease}
 .rp-sidebar-expanded{width:245px}
 .rp-sidebar-collapsed{width:65px;padding:18px 7px}
+.schoolreg-app:has(.rp-admin-context) .rp-sidebar{bottom:0}
 .rp-sidebar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 4px 17px}
 .rp-sidebar-section-label{color:#999;font-size:9px;font-weight:700;letter-spacing:1.6px}
 .rp-sidebar-toggle{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:5px;background:transparent;color:#777;cursor:pointer}
