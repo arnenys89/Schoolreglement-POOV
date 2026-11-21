@@ -2,15 +2,19 @@ import { jsonResponse, verifyAccessRequest } from "../_utils/access";
 
 type D1Statement = { bind(...values: any[]): D1Statement; all<T = unknown>(): Promise<{ results: T[] }>; };
 type D1Database = { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<unknown[]> };
-type Env = { DB: D1Database };
+type Env = { DB: D1Database; ADMIN_EMAILS?: string };
 type JsonRow = { data_json: string };
 
 const COLLECTIONS = new Set(["schools", "sections", "config", "versions"]);
 
-async function requireAdmin(request: Request): Promise<void> {
+async function requireAdmin(request: Request, env: Env): Promise<void> {
   const identity = await verifyAccessRequest(request);
   const email = String(identity.email || "").trim().toLowerCase();
-  if (email !== "arne.nys@ptiz.be") throw new Error("FORBIDDEN");
+  const allowedAdmins = (env.ADMIN_EMAILS || "arne.nys@ptiz.be")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowedAdmins.includes(email)) throw new Error("FORBIDDEN");
 }
 
 function parsePayload(row: JsonRow) {
@@ -48,7 +52,7 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
 
   if (request.method === "PUT") {
     try {
-      await requireAdmin(request);
+      await requireAdmin(request, env);
     } catch (error) {
       const forbidden = error instanceof Error && error.message === "FORBIDDEN";
       return jsonResponse({ error: forbidden ? "Geen schrijfrechten." : "Geldige Cloudflare Access-aanmelding vereist." }, forbidden ? 403 : 401);
