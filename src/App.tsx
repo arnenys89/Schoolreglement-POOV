@@ -678,9 +678,9 @@ export default function App() {
             {isAdmin && (
               <button type="button" className="rp-secondary-button" onClick={() => handleSetIsAdmin(false)}>Beheer sluiten</button>
             )}
-            <button type="button" className="rp-primary-button" onClick={() => { setPdfPrintImmediate(false); setShowPDFExporter(true); }}>
+            {(isAdmin || board.showFloatingPdf !== false) && <button type="button" className="rp-primary-button" onClick={() => { setPdfPrintImmediate(false); setShowPDFExporter(true); }}>
               <FileDown size={15}/> PDF / Afdrukken
-            </button>
+            </button>}
           </div>
           <button type="button" className="rp-mobile-menu" onClick={() => setShowTOCMobile(true)} aria-label="Inhoud openen"><Menu size={19}/></button>
         </div>
