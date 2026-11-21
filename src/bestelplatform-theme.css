@@ -21,3 +21,14 @@ html,body,#root{min-height:100%;margin:0}body{font-family:"Meta Pro Light","FF M
 @media(max-width:700px){.schoolreg-header-context{gap:7px}.schoolreg-context-select{padding:6px 8px;gap:5px}.schoolreg-context-label{display:none}.schoolreg-context-select select{max-width:125px;font-size:10px}.schoolreg-version-select{font-size:9px;gap:4px}.schoolreg-version-select select{max-width:100px;padding:6px 22px 6px 7px!important;font-size:10px}.schoolreg-admin-exit{padding:6px 8px;font-size:9px}.schoolreg-school-link{display:none}.schoolreg-content{padding:18px 13px!important}.schoolreg-content h1{font-size:25px}.schoolreg-content .grid-cols-2,.schoolreg-content .grid-cols-3{grid-template-columns:1fr!important}}
 @media(max-width:560px){.schoolreg-header-main{padding:0 10px}.schoolreg-header-context{gap:5px}.schoolreg-context-select>svg:first-child{display:none}.schoolreg-context-select select{max-width:105px}.schoolreg-version-select>span{display:none}.schoolreg-version-select select{max-width:90px}.schoolreg-content{padding:16px 11px!important}}
 @media print{.schoolreg-header,.schoolreg-sidebar{display:none!important}.schoolreg-main{display:block!important}.schoolreg-content{max-width:none!important;padding:0!important}}
+
+/* Guided document entry point */
+.schoolreg-intro-card{display:flex;align-items:center;gap:15px;padding:18px 20px;background:#fff;border:1px solid var(--rp-line);border-left:4px solid var(--rp-yellow);border-radius:8px;box-shadow:var(--rp-shadow)}
+.schoolreg-intro-icon{display:grid;place-items:center;flex:0 0 auto;width:42px;height:42px;border-radius:7px;background:var(--rp-yellow-soft);color:#806500}
+.schoolreg-intro-copy{flex:1;min-width:0}
+.schoolreg-intro-eyebrow{display:block;margin-bottom:4px;color:#927300;font-size:9px;font-weight:700;letter-spacing:1.25px}
+.schoolreg-intro-copy h1{margin:0;color:var(--rp-ink);font-size:19px;font-weight:700;line-height:1.25}
+.schoolreg-intro-copy p{margin:5px 0 0;color:#777;font-size:11px;line-height:1.5}
+.schoolreg-intro-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;padding:9px 12px;border:1px solid #e7dfc2;border-radius:5px;background:#fffdf5;color:#6e5600;font-size:11px;font-weight:700;cursor:pointer}
+.schoolreg-intro-action:hover{background:var(--rp-yellow-soft);border-color:var(--rp-yellow)}
+@media(max-width:700px){.schoolreg-intro-card{align-items:flex-start;flex-wrap:wrap;padding:15px}.schoolreg-intro-icon{width:36px;height:36px}.schoolreg-intro-copy{flex:1 1 calc(100% - 55px)}.schoolreg-intro-copy h1{font-size:17px}.schoolreg-intro-action{margin-left:51px}}
