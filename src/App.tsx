@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
-  establishFirebaseSession,
+  fetchVersions,
+  saveVersions,
+  deleteVersion,
   fetchSchools,                
   saveSchools,
   fetchSections,
@@ -12,7 +14,7 @@ import {
   saveSectionsForVersion,
   fetchBoard,
   saveBoard,
-} from "./lib/firebase";
+} from "./lib/database";
 import {
   defaultSchoolBoard,
   defaultSections,
@@ -83,10 +85,6 @@ export default function App() {
         if (cancelled) return;
 
         const isSuperAdmin = session.role === "super" && email === "arne.nys@ptiz.be";
-        if (isSuperAdmin) {
-          // Exchange the verified Access identity for a short-lived Firebase custom-token session.
-          await establishFirebaseSession();
-        }
         if (cancelled) return;
         const role = isSuperAdmin ? "super" : "none";
         setAccessRole(role);
@@ -101,7 +99,7 @@ export default function App() {
         setAdminRole("none");
         setSchoolAdminSchoolId("");
         if (email === "arne.nys@ptiz.be") {
-          setAccessSetupError(error instanceof Error ? error.message : "De Firebase-beheersessie kon niet worden gestart.");
+          setAccessSetupError(error instanceof Error ? error.message : "De Cloudflare Access-beheersessie kon niet worden gestart.");
         }
       }
     })();
@@ -192,27 +190,10 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const schoolParam = params.get("school");
 
-      // Load regulation versions (We can keep this in local storage for now or move to DB)
-      const savedVersionsJSON = localStorage.getItem("schoolreglement_versions_v1");
-      let loadedVersionsList: RegulationVersion[] = [];
-      if (savedVersionsJSON) {
-        try {
-          loadedVersionsList = JSON.parse(savedVersionsJSON);
-        } catch {
-          loadedVersionsList = [];
-        }
-      }
-
+      let loadedVersionsList: RegulationVersion[] = await fetchVersions().catch((error) => { console.warn("Schooljaarversies konden niet uit Cloudflare D1 worden geladen:", error); return []; });
       if (loadedVersionsList.length === 0) {
-        loadedVersionsList = [
-          {
-            id: "2026-2027",
-            schoolYear: "2026-2027",
-            isPublished: true,
-            createdAt: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(loadedVersionsList));
+        loadedVersionsList = [{ id: "2026-2027", schoolYear: "2026-2027", isPublished: true, createdAt: new Date().toISOString() }];
+        await saveVersions(loadedVersionsList);
       }
       setVersions(loadedVersionsList);
 
@@ -235,19 +216,19 @@ export default function App() {
       try {
         const [schoolsResult, sectionsResult, pdfConfigResult, boardResult] = await Promise.all([
           fetchSchools().catch((e) => {
-            console.warn("Could not fetch schools from Firestore, using default fallback list:", e);
+            console.warn("Could not fetch schools from Cloudflare D1, using default fallback list:", e);
             return defaultSchools;
           }),
           fetchSectionsForVersion(currentVersionId).catch((e) => {
-            console.warn("Could not fetch sections from Firestore, using defaults instead:", e);
+            console.warn("Could not fetch sections from Cloudflare D1, using defaults instead:", e);
             return [];
           }),
           fetchPDFConfig().catch((e) => {
-            console.warn("Could not fetch PDF configuration from Firestore:", e);
+            console.warn("Could not fetch PDF configuration from Cloudflare D1:", e);
             return null;
           }),
           fetchBoard().catch((e) => {
-            console.warn("Could not fetch Board configuration from Firestore:", e);
+            console.warn("Could not fetch Board configuration from Cloudflare D1:", e);
             return null;
           })
         ]);
@@ -310,21 +291,10 @@ export default function App() {
       // Beheerrechten worden nooit via URL-parameters toegekend.
 
       // 2. Process Sections
-      const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v5");
-      if (!hasPdfImportRun) {
+      if (loadedSections.length === 0) {
         loadedSections = defaultSections;
         setSections(loadedSections);
-        saveSectionsForVersion(currentVersionId, defaultSections).then(() => {
-          localStorage.setItem("schoolreglement_pdf_imported_v5", "true");
-        }).catch(err => {
-          console.warn("Background save of default sections failed, utilizing fallback presentation:", err);
-        });
-      } else if (loadedSections.length === 0) {
-        loadedSections = defaultSections;
-        setSections(loadedSections);
-        saveSectionsForVersion(currentVersionId, loadedSections).catch(err => {
-          console.warn("Background save of empty section-set failed:", err);
-        });
+        saveSectionsForVersion(currentVersionId, loadedSections).catch(err => console.warn("Standaardreglement kon niet in Cloudflare D1 worden opgeslagen:", err));
       } else {
         setSections(loadedSections);
       }
@@ -350,26 +320,14 @@ export default function App() {
 
       // 4. Process Board
       let finalBoardFetched = loadedBoardObj;
-      if (!finalBoardFetched) {
-        const savedBoard = localStorage.getItem("schoolreglement_board_v1");
-        if (savedBoard) {
-          try {
-            finalBoardFetched = JSON.parse(savedBoard);
-          } catch {
-            finalBoardFetched = defaultSchoolBoard;
-          }
-        } else {
-          finalBoardFetched = defaultSchoolBoard;
-        }
-      }
+      if (!finalBoardFetched) finalBoardFetched = defaultSchoolBoard;
 
       if (finalBoardFetched) {
         if (!finalBoardFetched.logoUrl || finalBoardFetched.logoUrl.includes("Logo_Oost-Vlaanderen.svg")) {
           finalBoardFetched.logoUrl = defaultSchoolBoard.logoUrl;
         }
         try {
-          localStorage.setItem("schoolreglement_board_v1", JSON.stringify(finalBoardFetched));
-          saveBoard(finalBoardFetched).catch(err => console.warn("Background save of Board config failed:", err));
+          saveBoard(finalBoardFetched).catch(err => console.warn("Initialisatie van bestuursinstellingen in Cloudflare D1 mislukt:", err));
         } catch (e) {
           console.warn(e);
         }
@@ -456,23 +414,18 @@ export default function App() {
     setSections(await fetchSectionsForVersion(versionId));
   };
 
-  const handleToggleVersionPublish = (versionId: string) => {
-    const updated = versions.map((v) =>
-      v.id === versionId ? { ...v, isPublished: !v.isPublished } : v
-    );
+  const handleToggleVersionPublish = async (versionId: string) => {
+    const updated = versions.map((v) => v.id === versionId ? { ...v, isPublished: !v.isPublished } : v);
+    await saveVersions(updated);
     setVersions(updated);
-    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updated));
   };
 
-  const handleDeleteVersion = (versionId: string) => {
-    if (versionId === activeVersionId) {
-      alert("Fout: U kunt de actieve versie die u momenteel bewerkt niet verwijderen.");
-      return;
-    }
+  const handleDeleteVersion = async (versionId: string) => {
+    if (versionId === activeVersionId) { alert("Fout: U kunt de actieve versie die u momenteel bewerkt niet verwijderen."); return; }
     const updated = versions.filter((v) => v.id !== versionId);
+    await deleteVersion(versionId);
+    await saveVersions(updated);
     setVersions(updated);
-    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updated));
-    // localStorage.removeItem(`schoolreglement_sections_v1_version_${versionId}`); // This is for firebase now, maybe delete from firebase?
   };
 
   const handleAddVersion = async (schoolYear: string, cloneFromId: string) => {
@@ -490,8 +443,8 @@ export default function App() {
     };
 
     const updatedVersions = [...versions, newVersion];
+    await saveVersions(updatedVersions);
     setVersions(updatedVersions);
-    localStorage.setItem("schoolreglement_versions_v1", JSON.stringify(updatedVersions));
 
     // Clone sections
     let clonedSections: RegulationSection[] = [];
