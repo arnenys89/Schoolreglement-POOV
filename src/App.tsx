@@ -505,7 +505,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans antialiased text-gray-800">
+    <div className="schoolreg-app min-h-screen flex flex-col font-sans antialiased text-gray-800">
       {accessSetupError && (
         <div role="alert" className="mx-auto mt-4 max-w-4xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <strong>Beheerlogin nog niet volledig geconfigureerd.</strong>{" "}
@@ -649,7 +649,7 @@ export default function App() {
       </div>
       
       {/* 3. Top Header Nav Bar & Logo Banner (Visible to Admin only) */}
-      {isAdmin && schools.length > 0 && (
+      {schools.length > 0 && (
         <Header
           schools={schools}
           activeSchoolId={activeSchoolId}
@@ -701,7 +701,7 @@ export default function App() {
       )}
 
       {/* 5. MAIN APP BODY CONTAINER Layout */}
-      <main className="flex-1 w-full flex flex-col lg:flex-row gap-0 items-stretch min-h-[calc(100vh-4rem)]">
+      <main className="schoolreg-main flex-1 w-full flex flex-col lg:flex-row gap-0 items-stretch min-h-[calc(100vh-4rem)]">
         
         {/* Mobile TOC Toggle (visible only on small screens) */}
         <div className="lg:hidden p-4 border-b border-gray-200 bg-white sticky top-0 z-40 flex items-center justify-between no-print">
@@ -764,10 +764,14 @@ export default function App() {
         {/* Left Side: Sticky Full-Height Navigation TOC for Desktop */}
         <motion.div
           layout
-          className={`hidden lg:flex flex-col ${isSidebarOpen ? "w-[320px] xl:w-[365px]" : "w-16"} shrink-0 border-r border-gray-200 bg-white sticky top-0 h-screen overflow-y-auto ${isSidebarOpen ? "px-8 py-8" : "px-4 py-8"} gap-6 no-print shadow-xs`}
+          className={`schoolreg-sidebar ${isSidebarOpen ? "schoolreg-sidebar-open" : "schoolreg-sidebar-closed"} hidden lg:flex flex-col shrink-0 border-r border-gray-200 bg-white sticky top-0 overflow-y-auto no-print shadow-xs`}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <div className="flex justify-end">
+          <div className="schoolreg-sidebar-brand">
+            <div className="schoolreg-sidebar-mark">R</div>
+            {isSidebarOpen && <div><strong>Richtpunt</strong><small>Reglementen</small></div>}
+          </div>
+          <div className="flex justify-end schoolreg-sidebar-toggle-row">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-1 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
@@ -802,7 +806,7 @@ export default function App() {
 
 
         {/* Middle/Main Grid Column: Document Viewer and Editor list */}
-        <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 order-1 lg:order-2 max-w-4xl w-full lg:mx-auto flex flex-col gap-5">
+        <div className="schoolreg-content flex-1 min-w-0 p-4 sm:p-6 lg:p-8 order-1 lg:order-2 max-w-4xl w-full lg:mx-auto flex flex-col gap-5">
           
           {/* Admin panel injection if active */}
           {isAdmin && (
