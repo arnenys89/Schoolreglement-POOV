@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
+  establishFirebaseSession,
   fetchSchools,                
   saveSchools,
   fetchSections,
@@ -46,6 +47,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"none" | "super">("none");
+  const [accessSetupError, setAccessSetupError] = useState("");
   const [adminRole, setAdminRole] = useState<"none" | "super" | "school">("none");
   const [schoolAdminSchoolId, setSchoolAdminSchoolId] = useState("");
 
@@ -68,6 +70,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let email = "";
       try {
         const response = await fetch("/api/session", {
           method: "GET",
@@ -77,21 +80,31 @@ export default function App() {
         });
         if (!response.ok) throw new Error("Geen geldige Cloudflare Access-sessie.");
         const session = await response.json();
+        email = typeof session.email === "string" ? session.email.trim().toLowerCase() : "";
         if (cancelled) return;
-        const email = typeof session.email === "string" ? session.email.trim().toLowerCase() : "";
-        const role = session.role === "super" && email === "arne.nys@ptiz.be" ? "super" : "none";
         setAccessEmail(email);
+
+        const isSuperAdmin = session.role === "super" && email === "arne.nys@ptiz.be";
+        if (isSuperAdmin) {
+          // Exchange the verified Access identity for a short-lived Firebase custom-token session.
+          await establishFirebaseSession();
+        }
+        if (cancelled) return;
+        const role = isSuperAdmin ? "super" : "none";
         setAccessRole(role);
-        setIsAdmin(role === "super");
+        setIsAdmin(isSuperAdmin);
         setAdminRole(role);
         setSchoolAdminSchoolId("");
-      } catch {
+        setAccessSetupError("");
+      } catch (error) {
         if (cancelled) return;
-        setAccessEmail("");
         setAccessRole("none");
         setIsAdmin(false);
         setAdminRole("none");
         setSchoolAdminSchoolId("");
+        if (email === "arne.nys@ptiz.be") {
+          setAccessSetupError(error instanceof Error ? error.message : "De Firebase-beheersessie kon niet worden gestart.");
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -531,7 +544,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans antialiased text-gray-800">
-      
+      {accessSetupError && (
+        <div role="alert" className="mx-auto mt-4 max-w-4xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Beheerlogin nog niet volledig geconfigureerd.</strong>{" "}
+          {accessSetupError} De Firebase-serviceaccountsleutel moet als Cloudflare Pages-secret worden ingesteld.
+        </div>
+      )}
+
       {/* 1. Dynamic Corporate Identity (Huisstijl) Styles Overrides */}
       <style>{`
         :root {
