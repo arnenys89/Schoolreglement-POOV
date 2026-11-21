@@ -3,18 +3,17 @@ import { jsonResponse, verifyAccessRequest } from "../_utils/access";
 type D1Statement = { bind(...values: any[]): D1Statement; all<T = unknown>(): Promise<{ results: T[] }>; };
 type D1Database = { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<unknown[]> };
 type Env = { DB: D1Database };
-type RecordRow = { collection: string; record_id: string; version_id: string; data_json: string; updated_at: string };
+type JsonRow = { data_json: string };
 
 const COLLECTIONS = new Set(["schools", "sections", "config", "versions"]);
 
-async function requireAdmin(request: Request): Promise<string> {
+async function requireAdmin(request: Request): Promise<void> {
   const identity = await verifyAccessRequest(request);
   const email = String(identity.email || "").trim().toLowerCase();
   if (email !== "arne.nys@ptiz.be") throw new Error("FORBIDDEN");
-  return email;
 }
 
-function parseRow(row: RecordRow) {
+function parsePayload(row: JsonRow) {
   return JSON.parse(row.data_json);
 }
 
@@ -27,10 +26,21 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
   if (request.method === "GET") {
     if (!COLLECTIONS.has(collection)) return jsonResponse({ error: "Ongeldige gegevenscollectie." }, 400);
     try {
-      const result = collection === "sections"
-        ? await env.DB.prepare("SELECT * FROM app_records WHERE collection = ? AND version_id = ? ORDER BY rowid").bind(collection, versionId).all<RecordRow>()
-        : await env.DB.prepare("SELECT * FROM app_records WHERE collection = ? ORDER BY rowid").bind(collection).all<RecordRow>();
-      return jsonResponse({ records: (result.results || []).map(parseRow) });
+      let rows: any[];
+      if (collection === "schools") {
+        const result = await env.DB.prepare("SELECT payload_json AS data_json FROM schools ORDER BY rowid").all<JsonRow>();
+        rows = (result.results || []).map(parsePayload);
+      } else if (collection === "sections") {
+        const result = await env.DB.prepare("SELECT payload_json AS data_json FROM regulation_sections WHERE version_id = ? ORDER BY rowid").bind(versionId).all<JsonRow>();
+        rows = (result.results || []).map(parsePayload);
+      } else if (collection === "versions") {
+        const result = await env.DB.prepare("SELECT payload_json AS data_json FROM school_years ORDER BY school_year DESC").all<JsonRow>();
+        rows = (result.results || []).map(parsePayload);
+      } else {
+        const result = await env.DB.prepare("SELECT key, value_json FROM app_settings ORDER BY key").all<{ key: string; value_json: string }>();
+        rows = (result.results || []).map((row) => ({ id: row.key, ...JSON.parse(row.value_json) }));
+      }
+      return jsonResponse({ records: rows });
     } catch {
       return jsonResponse({ error: "De gegevens konden niet uit Cloudflare D1 worden gelezen." }, 500);
     }
@@ -40,7 +50,8 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
     try {
       await requireAdmin(request);
     } catch (error) {
-      return jsonResponse({ error: error instanceof Error && error.message === "FORBIDDEN" ? "Geen schrijfrechten." : "Geldige Cloudflare Access-aanmelding vereist." }, error instanceof Error && error.message === "FORBIDDEN" ? 403 : 401);
+      const forbidden = error instanceof Error && error.message === "FORBIDDEN";
+      return jsonResponse({ error: forbidden ? "Geen schrijfrechten." : "Geldige Cloudflare Access-aanmelding vereist." }, forbidden ? 403 : 401);
     }
 
     if (!COLLECTIONS.has(collection)) return jsonResponse({ error: "Ongeldige gegevenscollectie." }, 400);
@@ -50,8 +61,8 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
     if (body?.deleteVersionId && collection === "versions") {
       const id = String(body.deleteVersionId);
       await env.DB.batch([
-        env.DB.prepare("DELETE FROM app_records WHERE collection = 'sections' AND version_id = ?").bind(id),
-        env.DB.prepare("DELETE FROM app_records WHERE collection = 'versions' AND record_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM regulation_sections WHERE version_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM school_years WHERE id = ?").bind(id),
       ]);
       return jsonResponse({ success: true });
     }
@@ -64,15 +75,24 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
     try {
       const statements: D1Statement[] = [];
       if (body?.replace === true) {
-        statements.push(collection === "sections"
-          ? env.DB.prepare("DELETE FROM app_records WHERE collection = ? AND version_id = ?").bind(collection, keyVersion)
-          : env.DB.prepare("DELETE FROM app_records WHERE collection = ?").bind(collection));
+        if (collection === "schools") statements.push(env.DB.prepare("DELETE FROM schools"));
+        if (collection === "sections") statements.push(env.DB.prepare("DELETE FROM regulation_sections WHERE version_id = ?").bind(keyVersion));
+        if (collection === "versions") statements.push(env.DB.prepare("DELETE FROM school_years"));
       }
+
       for (const record of records) {
         if (!record || typeof record !== "object" || typeof record.id !== "string" || !record.id.trim()) continue;
-        statements.push(env.DB.prepare(
-          "INSERT INTO app_records (collection, record_id, version_id, data_json, updated_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(collection, record_id, version_id) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at"
-        ).bind(collection, record.id, keyVersion, JSON.stringify(record)));
+        const payload = JSON.stringify(record);
+        if (collection === "schools") {
+          statements.push(env.DB.prepare("INSERT INTO schools (id, name, payload_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET name=excluded.name, payload_json=excluded.payload_json, updated_at=CURRENT_TIMESTAMP").bind(record.id, String(record.name || ""), payload));
+        } else if (collection === "sections") {
+          statements.push(env.DB.prepare("INSERT INTO regulation_sections (id, version_id, section_number, chapter_number, payload_json, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(version_id,id) DO UPDATE SET section_number=excluded.section_number, chapter_number=excluded.chapter_number, payload_json=excluded.payload_json, updated_at=CURRENT_TIMESTAMP").bind(record.id, keyVersion, String(record.sectionNumber || ""), Number(record.chapterNumber || 0), payload));
+        } else if (collection === "versions") {
+          statements.push(env.DB.prepare("INSERT INTO school_years (id, school_year, is_published, created_at, payload_json, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET school_year=excluded.school_year, is_published=excluded.is_published, created_at=excluded.created_at, payload_json=excluded.payload_json, updated_at=CURRENT_TIMESTAMP").bind(record.id, String(record.schoolYear || record.id), record.isPublished ? 1 : 0, String(record.createdAt || new Date().toISOString()), payload));
+        } else {
+          const { id, ...value } = record;
+          statements.push(env.DB.prepare("INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=CURRENT_TIMESTAMP").bind(id, JSON.stringify(value)));
+        }
       }
       if (statements.length) await env.DB.batch(statements);
       return jsonResponse({ success: true, saved: records.length });
