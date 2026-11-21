@@ -1,6 +1,6 @@
 import React from "react";
 import { School, SchoolBoard, RegulationVersion } from "../types";
-import { ShieldCheck, Layers, ExternalLink, BookOpen, ChevronDown } from "lucide-react";
+import { ShieldCheck, BookOpen, ExternalLink, ChevronDown } from "lucide-react";
 
 interface HeaderProps {
   schools: School[];
@@ -19,8 +19,7 @@ interface HeaderProps {
 
 export default function Header({
   schools, activeSchoolId, onSchoolChange, isAdmin, setIsAdmin, board,
-  adminRole = "none",
-  versions, activeVersionId, onVersionChange,
+  adminRole = "none", versions, activeVersionId, onVersionChange,
 }: HeaderProps) {
   const activeSchool = schools.find((s) => s.id === activeSchoolId) || schools[0];
 
@@ -37,13 +36,17 @@ export default function Header({
         </div>
 
         <div className="schoolreg-header-context">
-          <div className="schoolreg-context-school">
-            <span className="schoolreg-context-icon"><BookOpen size={15} /></span>
-            <div>
-              <span className="schoolreg-context-label">HUIDIGE CAMPUS</span>
-              <strong>{activeSchool?.name?.replace("Richtpunt campus ", "Campus ") || "Schoolreglement"}</strong>
-            </div>
-          </div>
+          <label className="schoolreg-context-select">
+            <BookOpen size={15} />
+            <span className="schoolreg-context-label">CAMPUS</span>
+            <select value={activeSchoolId} onChange={(e) => onSchoolChange(e.target.value)} aria-label="Selecteer campus">
+              {schools.map((school) => (
+                <option key={school.id} value={school.id}>{school.name.replace("Richtpunt campus ", "")}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} />
+          </label>
+
           <label className="schoolreg-version-select">
             <span>Schooljaar</span>
             <select value={activeVersionId} onChange={(e) => onVersionChange(e.target.value)}>
@@ -53,6 +56,13 @@ export default function Header({
             </select>
             <ChevronDown size={13} />
           </label>
+
+          {activeSchool?.website && (
+            <a className="schoolreg-school-link" href={activeSchool.website} target="_blank" rel="noreferrer" title="Open schoolwebsite">
+              <ExternalLink size={14} />
+            </a>
+          )}
+
           {isAdmin && (
             <div className="schoolreg-admin-tools">
               {adminRole === "super" && (
@@ -65,30 +75,6 @@ export default function Header({
           )}
         </div>
       </div>
-
-      <nav className="schoolreg-campus-nav" aria-label="Campussen">
-        <span className="schoolreg-nav-caption"><Layers size={13} /> CAMPUSTOEGANG</span>
-        {schools.map((school) => {
-          const active = school.id === activeSchoolId;
-          return (
-            <button
-              key={school.id}
-              type="button"
-              onClick={() => onSchoolChange(school.id)}
-              className={"schoolreg-campus-tab " + (active ? "active" : "")}
-              title={school.address || school.name}
-            >
-              {school.name.replace("Richtpunt campus ", "")}
-            </button>
-          );
-        })}
-        <span className="schoolreg-campus-spacer" />
-        {activeSchool?.website && (
-          <a className="schoolreg-school-link" href={activeSchool.website} target="_blank" rel="noreferrer">
-            Schoolwebsite <ExternalLink size={12} />
-          </a>
-        )}
-      </nav>
     </header>
   );
 }
