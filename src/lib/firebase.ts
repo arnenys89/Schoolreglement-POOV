@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, updateDoc } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { School, RegulationSection, RegulationVersion, PDFConfig, SchoolBoard } from '../types';
@@ -7,6 +7,20 @@ import { School, RegulationSection, RegulationVersion, PDFConfig, SchoolBoard } 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth();
+
+export async function establishFirebaseSession(): Promise<void> {
+  const response = await fetch("/api/firebase-token", {
+    method: "POST",
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || typeof result.customToken !== "string") {
+    throw new Error(typeof result.error === "string" ? result.error : "Firebase-aanmelding kon niet worden voltooid.");
+  }
+  await signInWithCustomToken(auth, result.customToken);
+}
 
 export async function fetchSchools(): Promise<School[]> {
   console.log("Fetching schools from firestore...");
