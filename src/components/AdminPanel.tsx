@@ -51,7 +51,7 @@ export default function AdminPanel({
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([
     { id: "1", sectionId: "1", timestamp: new Date().toISOString(), adminRole: "superadmin", action: "edit", description: "Titel aangepast" }
   ]);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   // =========================================================================
   // STATE DEFINITIONS
@@ -293,8 +293,7 @@ export default function AdminPanel({
         
         {/* Header row */}
         <div 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none group ${
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none group ${
             isExpanded ? "pb-4 border-b border-gray-200" : ""
           }`}
         >
@@ -327,7 +326,7 @@ export default function AdminPanel({
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-gray-700 flex items-center justify-center cursor-pointer"
               aria-label={isExpanded ? "Inklappen" : "Uitklappen"}
             >
-              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}<span className="text-xs font-semibold">{isExpanded ? "Beheer sluiten" : "Beheer openen"}</span>
             </button>
           </div>
         </div>
