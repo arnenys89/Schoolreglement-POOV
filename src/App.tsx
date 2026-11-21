@@ -958,6 +958,21 @@ export default function App() {
             </div>
           )}
 
+          {/* Compact document context for visitors when no welcome banner is configured */}
+          {!isAdmin && board.showWelcomeCard !== true && (
+            <section className="schoolreg-intro-card no-print" aria-label="Over dit schoolreglement">
+              <div className="schoolreg-intro-icon"><FileText size={20} /></div>
+              <div className="schoolreg-intro-copy">
+                <span className="schoolreg-intro-eyebrow">OFFICIEEL SCHOOLREGLEMENT</span>
+                <h1>{activeSchool?.name || "Schoolreglement"}</h1>
+                <p>Schooljaar {versions.find((v) => v.id === activeVersionId)?.schoolYear || "2026-2027"} · Gebruik de zoekfunctie of blader door de hoofdstukken om snel de juiste afspraak te vinden.</p>
+              </div>
+              <button type="button" className="schoolreg-intro-action" onClick={() => { setShowTOCMobile(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                <Menu size={15} /> Inhoud bekijken
+              </button>
+            </section>
+          )}
+
           {/* List of active sections */}
           <div className="space-y-4">
             {sortedSections.length > 0 &&
