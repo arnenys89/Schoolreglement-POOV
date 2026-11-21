@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
+  auth,
   fetchSchools,                
   saveSchools,
   fetchSections,
@@ -48,21 +49,22 @@ export default function App() {
   const [schoolAdminSchoolId, setSchoolAdminSchoolId] = useState("");
 
   const handleSetIsAdmin = (value: boolean) => {
-    setIsAdmin(value);
-    const url = new URL(window.location.href);
-    if (!value) {
-      setAdminRole("none");
-      setSchoolAdminSchoolId("");
-      url.searchParams.delete("admin");
-      url.searchParams.delete("role");
-      url.searchParams.delete("beheer");
-    } else {
-      if (adminRole === "none") {
-        setAdminRole("super");
-        url.searchParams.set("admin", "super");
+    if (value) {
+      const signedInEmail = auth.currentUser?.email?.trim().toLowerCase();
+      if (signedInEmail !== "arne.nys@ptiz.be") {
+        setIsAdmin(false);
+        setAdminRole("none");
+        setSchoolAdminSchoolId("");
+        return;
       }
+      setIsAdmin(true);
+      setAdminRole("super");
+      setSchoolAdminSchoolId("");
+      return;
     }
-    window.history.pushState({}, "", url.toString());
+    setIsAdmin(false);
+    setAdminRole("none");
+    setSchoolAdminSchoolId("");
   };
   const [searchFilter, setSearchFilter] = useState("");
   const [showPDFExporter, setShowPDFExporter] = useState(false);
@@ -270,20 +272,7 @@ export default function App() {
         setActiveSchoolId("145722"); // Default
       }
 
-      // Automatically configure admin settings based on custom entry query parameters
-      const adminRoleParam = params.get("admin") || params.get("role") || params.get("beheer");
-      if (adminRoleParam) {
-        const roleLower = adminRoleParam.toLowerCase();
-        if (roleLower === "super" || roleLower === "board" || roleLower === "bestuur" || roleLower === "bestuursbeheerder") {
-          setIsAdmin(true);
-          setAdminRole("super");
-          setSchoolAdminSchoolId("");
-        } else if (roleLower === "school" || roleLower === "schoolbeheerder") {
-          setIsAdmin(true);
-          setAdminRole("school");
-          setSchoolAdminSchoolId(matchedSchoolId);
-        }
-      }
+      // Beheerrechten worden nooit via URL-parameters toegekend.
 
       // 2. Process Sections
       const hasPdfImportRun = localStorage.getItem("schoolreglement_pdf_imported_v5");
