@@ -43,3 +43,14 @@ Voeg in Cloudflare Pages bij **Settings → Variables and Secrets → Production
 Het serviceaccount moet de Firestore Rules Admin-rol hebben om de regels via de build te publiceren. De Firebase Authentication-service moet in het project geactiveerd zijn. Na het toevoegen van het secret triggert een nieuwe push naar `main` automatisch de publicatie van de Firestore-regels; de app gebruikt hetzelfde secret om de Firebase-sessie op te bouwen.
 
 Zonder dit secret blijven de nieuwe Firestore-regels alleen voorbereid in de repository en wordt de Firebase-aanmelding niet geactiveerd. De build slaat de rules-deploy dan bewust over.
+
+
+## Beheerrechten voor de D1-API
+
+De schrijfroute `/api/data` vertrouwt uitsluitend op een geldig Cloudflare Access-JWT en een expliciete e-mailallowlist. Configureer in Cloudflare Pages bij **Settings → Variables and Secrets**:
+
+- `ADMIN_EMAILS`: komma-gescheiden lijst van beheerders-e-mailadressen, bijvoorbeeld `beheerder1@school.be,beheerder2@school.be`.
+
+Als de variabele ontbreekt, blijft uit compatibiliteit alleen het bestaande beheeraccount `arne.nys@ptiz.be` toegelaten. Voeg nieuwe beheerders pas toe nadat hun identiteit en Cloudflare Access-toegang zijn gecontroleerd. Gebruik geen client-side rolveld om beheerdersrechten toe te kennen.
+
+Na configuratie moet de API met een niet-beheerder (403), zonder Access-token (401) en met elke toegelaten beheerder (200 bij geldige payload) worden getest.
