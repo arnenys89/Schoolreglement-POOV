@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "deploy:firestore-rules": "node scripts/deploy-firestore-rules.mjs"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -18,7 +17,6 @@
     "diff": "^9.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "firebase": "^12.14.0",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
