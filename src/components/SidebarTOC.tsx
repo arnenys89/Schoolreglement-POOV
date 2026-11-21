@@ -267,7 +267,7 @@ export default function SidebarTOC({
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 shrink-0">
         <BookOpen className="text-[#D6AD00]" size={16} />
         <h3 className="font-display font-bold text-[#2E2E2E] text-xs uppercase tracking-wider">
-          Inhoudstabel
+          Blader door het reglement
         </h3>
       </div>
 
@@ -280,7 +280,7 @@ export default function SidebarTOC({
       <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <span>Schooleigen detail</span>
+          <span>Afwijkende campusinhoud</span>
         </span>
       </div>
 
