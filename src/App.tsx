@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { School, SchoolBoard, RegulationSection, PDFConfig, RegulationVersion } from "./types";
 import {
-  auth,
   fetchSchools,                
   saveSchools,
   fetchSections,
@@ -45,25 +44,16 @@ export default function App() {
   const [activeSchoolId, setActiveSchoolId] = useState("145722"); // Default to Ninove-Zottegem
   const [activeSectionId, setActiveSectionId] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessRole, setAccessRole] = useState<"none" | "super">("none");
   const [adminRole, setAdminRole] = useState<"none" | "super" | "school">("none");
   const [schoolAdminSchoolId, setSchoolAdminSchoolId] = useState("");
 
   const handleSetIsAdmin = (value: boolean) => {
-    if (value) {
-      const signedInEmail = auth.currentUser?.email?.trim().toLowerCase();
-      if (signedInEmail !== "arne.nys@ptiz.be") {
-        setIsAdmin(false);
-        setAdminRole("none");
-        setSchoolAdminSchoolId("");
-        return;
-      }
-      setIsAdmin(true);
-      setAdminRole("super");
-      setSchoolAdminSchoolId("");
-      return;
-    }
-    setIsAdmin(false);
-    setAdminRole("none");
+    // Beheerrechten komen uitsluitend uit de server-side gevalideerde Cloudflare Access-sessie.
+    if (value && accessRole !== "super") return;
+    setIsAdmin(value);
+    setAdminRole(value ? "super" : "none");
     setSchoolAdminSchoolId("");
   };
   const [searchFilter, setSearchFilter] = useState("");
@@ -72,6 +62,40 @@ export default function App() {
   const [scrollPercent, setScrollPercent] = useState(0);
   const [showTOCMobile, setShowTOCMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Cloudflare Access is the single sign-on authority. The Pages Function verifies the JWT signature,
+  // issuer, audience and expiry before returning the user's identity and effective role.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/session", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Geen geldige Cloudflare Access-sessie.");
+        const session = await response.json();
+        if (cancelled) return;
+        const email = typeof session.email === "string" ? session.email.trim().toLowerCase() : "";
+        const role = session.role === "super" && email === "arne.nys@ptiz.be" ? "super" : "none";
+        setAccessEmail(email);
+        setAccessRole(role);
+        setIsAdmin(role === "super");
+        setAdminRole(role);
+        setSchoolAdminSchoolId("");
+      } catch {
+        if (cancelled) return;
+        setAccessEmail("");
+        setAccessRole("none");
+        setIsAdmin(false);
+        setAdminRole("none");
+        setSchoolAdminSchoolId("");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Dynamic Scroll progress bar handler
   useEffect(() => {
@@ -657,18 +681,6 @@ export default function App() {
           onRoleChange={(role, schoolId) => {
             setAdminRole(role);
             setSchoolAdminSchoolId(schoolId);
-            const url = new URL(window.location.href);
-            if (role === "super") {
-              url.searchParams.set("admin", "super");
-              url.searchParams.delete("school");
-            } else if (role === "school") {
-              url.searchParams.set("admin", "school");
-              if (schoolId) {
-                url.searchParams.set("school", schoolId);
-              }
-            }
-            window.history.pushState({}, "", url.toString());
-
             if (role === "school" && schoolId) {
               handleSchoolChange(schoolId);
             }
