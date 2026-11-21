@@ -404,11 +404,18 @@ export default function App() {
     await savePDFConfig(updatedConfig);
   };
 
-  const handleResetAllData = () => {
-    if (confirm("Weet u zeker dat u alle reglement-items en camppelposities wilt herstellen naar de oorspronkelijke waarden? Dit wist alle gemaakte aanpassingen.")) {
-      localStorage.clear();
-      window.location.reload();
-    }
+  const handleResetAllData = async () => {
+    if (!confirm("Weet u zeker dat u alle reglement-items en campusposities wilt herstellen naar de oorspronkelijke waarden? Dit wist alle gemaakte aanpassingen in Cloudflare D1.")) return;
+    const initialVersion: RegulationVersion = { id: "2026-2027", schoolYear: "2026-2027", isPublished: true, createdAt: new Date().toISOString() };
+    await Promise.all([
+      saveSchools(defaultSchools),
+      saveSectionsForVersion(initialVersion.id, defaultSections),
+      savePDFConfig(defaultPDFConfig),
+      saveBoard(defaultSchoolBoard),
+      saveVersions([initialVersion]),
+    ]);
+    localStorage.removeItem("schoolreglement_active_version_id_v1");
+    window.location.reload();
   };
 
   const handleSelectVersion = async (versionId: string) => {
