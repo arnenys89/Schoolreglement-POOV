@@ -19,7 +19,7 @@ interface HeaderProps {
 
 export default function Header({
   schools, activeSchoolId, onSchoolChange, isAdmin, setIsAdmin, board,
-  adminRole = "none", schoolAdminSchoolId = "", onRoleChange,
+  adminRole = "none",
   versions, activeVersionId, onVersionChange,
 }: HeaderProps) {
   const activeSchool = schools.find((s) => s.id === activeSchoolId) || schools[0];
