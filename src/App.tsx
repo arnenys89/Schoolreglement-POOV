@@ -45,7 +45,6 @@ export default function App() {
   const [activeSchoolId, setActiveSchoolId] = useState("145722"); // Default to Ninove-Zottegem
   const [activeSectionId, setActiveSectionId] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"none" | "super">("none");
   const [accessSetupError, setAccessSetupError] = useState("");
   const [adminRole, setAdminRole] = useState<"none" | "super" | "school">("none");
@@ -82,7 +81,6 @@ export default function App() {
         const session = await response.json();
         email = typeof session.email === "string" ? session.email.trim().toLowerCase() : "";
         if (cancelled) return;
-        setAccessEmail(email);
 
         const isSuperAdmin = session.role === "super" && email === "arne.nys@ptiz.be";
         if (isSuperAdmin) {
