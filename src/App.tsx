@@ -22,7 +22,6 @@ import {
   defaultPDFConfig
 } from "./data/mockData";
 
-import Header from "./components/Header";
 import SearchEngine from "./components/SearchEngine";
 import SidebarTOC from "./components/SidebarTOC";
 import SectionItem from "./components/SectionItem";
@@ -648,165 +647,91 @@ export default function App() {
         />
       </div>
       
-      {/* 3. Top Header Nav Bar & Logo Banner (Visible to Admin only) */}
-      {schools.length > 0 && (
-        <Header
-          schools={schools}
-          activeSchoolId={activeSchoolId}
-          onSchoolChange={handleSchoolChange}
-          isAdmin={isAdmin}
-          setIsAdmin={handleSetIsAdmin}
-          board={board}
-          adminRole={adminRole}
-          schoolAdminSchoolId={schoolAdminSchoolId}
-          onRoleChange={(role, schoolId) => {
-            setAdminRole(role);
-            setSchoolAdminSchoolId(schoolId);
-            if (role === "school" && schoolId) {
-              handleSchoolChange(schoolId);
-            }
-          }}
-          versions={versions}
-          activeVersionId={activeVersionId}
-          onVersionChange={handleSelectVersion}
-        />
-      )}
-
-      {/* 4. Global Information Strip */}
-      {isAdmin && (
-        <div className="bg-amber-50/70 border-b border-amber-100 text-[#B59300] py-2.5 px-4 no-print sm:px-6 lg:px-8 text-xs flex flex-col sm:flex-row justify-between items-center gap-3 font-medium select-none">
-          <div className="flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
-            <Info size={14} className="shrink-0" />
-            <span>U doorzoekt momenteel de regelgeving van: <strong>{activeSchool?.name || "Laden..."}</strong>. Directe link/sublink: </span>
-            <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 select-all font-semibold break-all text-[11px]">
-              {window.location.origin}/?school={activeSchoolId}
-            </span>
+      {/* Nieuwe Bestelplatform-appshell */}
+      <header className="rp-topbar no-print">
+        <div className="rp-brand">
+          <span className="rp-brand-mark">R</span>
+          <span className="rp-brand-copy"><strong>Richtpunt</strong><small>SCHOOLREGLEMENTEN</small></span>
+        </div>
+        <div className="rp-topbar-context">
+          {(isAdmin || board.showSchoolSelector === true) && schools.length > 0 && (
+            <label className="rp-select-wrap">
+              <span>Campus</span>
+              <select value={activeSchoolId} onChange={(e) => handleSchoolChange(e.target.value)}>
+                {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="rp-select-wrap rp-year-select">
+            <span>Schooljaar</span>
+            <select value={activeVersionId} onChange={(e) => handleSelectVersion(e.target.value)}>
+              {versions.filter((version) => isAdmin || version.isPublished).map((version) => (
+                <option key={version.id} value={version.id}>{version.schoolYear}</option>
+              ))}
+            </select>
+          </label>
+          {isAdmin && <span className="rp-admin-status"><Shield size={13}/> Beheer actief</span>}
+          <div className="rp-topbar-buttons">
+            {!isAdmin && accessRole === "super" && (
+              <button type="button" className="rp-secondary-button" onClick={() => handleSetIsAdmin(true)}>Beheer openen</button>
+            )}
+            {isAdmin && (
+              <button type="button" className="rp-secondary-button" onClick={() => handleSetIsAdmin(false)}>Beheer sluiten</button>
+            )}
+            <button type="button" className="rp-primary-button" onClick={() => { setPdfPrintImmediate(false); setShowPDFExporter(true); }}>
+              <FileDown size={15}/> PDF / Afdrukken
+            </button>
           </div>
-          
-          {/* Snelkoppeling naar exporter in admin strip */}
-          <button
-            onClick={() => {
-              setPdfPrintImmediate(false);
-              setShowPDFExporter(true);
-            }}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1 bg-[#D6AD00] hover:bg-[#B59300] text-gray-950 rounded hover:shadow-xs cursor-pointer transition-all duration-150 transform hover:scale-[1.02] active:scale-95 text-xs font-semibold font-sans border border-[#D6AD00]/30"
-            title="Snel printen / PDF-voorbeeld ontwerpen"
-            id="strip-pdf-export-btn"
-          >
-            <span className="bg-[#2E2E2E] text-white px-1 py-0.2 rounded text-[8px] font-extrabold tracking-tight font-mono leading-none">PDF</span>
-            <FileDown size={13} />
-            <span>Printvoorbeeld & PDF Ontwerp</span>
-          </button>
+          <button type="button" className="rp-mobile-menu" onClick={() => setShowTOCMobile(true)} aria-label="Inhoud openen"><Menu size={19}/></button>
+        </div>
+      </header>
+
+      {isAdmin && (
+        <div className="rp-admin-context no-print">
+          <Info size={14}/>
+          <span>Beheer van <strong>{activeSchool?.name || "de geselecteerde campus"}</strong></span>
+          <span className="rp-context-link">{window.location.origin}/?school={activeSchoolId}</span>
         </div>
       )}
 
-      {/* 5. MAIN APP BODY CONTAINER Layout */}
-      <main className="schoolreg-main flex-1 w-full flex flex-col lg:flex-row gap-0 items-stretch min-h-[calc(100vh-4rem)]">
-        
-        {/* Mobile TOC Toggle (visible only on small screens) */}
-        <div className="lg:hidden p-4 border-b border-gray-200 bg-white sticky top-0 z-40 flex items-center justify-between no-print">
-          <span className="text-xs font-semibold text-gray-700">Inhoudstabel</span>
-          <button
-            onClick={() => setShowTOCMobile(true)}
-            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
+      <main className="rp-layout">
+        <aside className={`rp-sidebar no-print ${isSidebarOpen ? "rp-sidebar-expanded" : "rp-sidebar-collapsed"}`}>
+          <div className="rp-sidebar-heading">
+            <div className="rp-sidebar-section-label">NAVIGATIE</div>
+            <button type="button" className="rp-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label={isSidebarOpen ? "Navigatie inklappen" : "Navigatie uitklappen"}>
+              {isSidebarOpen ? <X size={16}/> : <Menu size={17}/>}
+            </button>
+          </div>
+          {isSidebarOpen && sections.length > 0 && (
+            <div className="rp-sidebar-content">
+              {board.showSearchEngine !== false && (
+                <div className="rp-search-area">
+                  <SearchEngine sections={sections} activeSchoolId={activeSchoolId} onSelectSection={handleScrollToSegment}/>
+                </div>
+              )}
+              <div className="rp-toc-area">
+                <SidebarTOC sections={sections} activeSchoolId={activeSchoolId} activeSectionId={activeSectionId} onSelectSection={handleScrollToSegment}/>
+              </div>
+            </div>
+          )}
+        </aside>
 
-        {/* Mobile TOC Drawer (visible only on small screens) */}
         <AnimatePresence>
           {showTOCMobile && (
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="lg:hidden fixed inset-0 z-[60] bg-white w-full overflow-y-auto shadow-2xl no-print"
-            >
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-                <h3 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Inhoudstabel</h3>
-                <button
-                  onClick={() => setShowTOCMobile(false)}
-                  className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
-                >
-                  <X size={20} />
-                </button>
+            <motion.div initial={{x:"-100%"}} animate={{x:0}} exit={{x:"-100%"}} transition={{type:"spring",damping:25,stiffness:200}} className="rp-mobile-drawer no-print">
+              <div className="rp-mobile-drawer-head">
+                <div className="rp-brand"><span className="rp-brand-mark">R</span><span className="rp-brand-copy"><strong>Richtpunt</strong><small>REGLEMENTEN</small></span></div>
+                <button type="button" className="rp-sidebar-toggle" onClick={() => setShowTOCMobile(false)} aria-label="Navigatie sluiten"><X size={19}/></button>
               </div>
-              <div className="p-4">
-                {sections.length > 0 && (
-                  <div className="flex flex-col h-full gap-6">
-                    {board.showSearchEngine !== false && (
-                      <div className="shrink-0">
-                        <SearchEngine
-                          sections={sections}
-                          activeSchoolId={activeSchoolId}
-                          onSelectSection={handleScrollToSegment}
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 min-h-0">
-                      <SidebarTOC
-                        sections={sections}
-                        activeSchoolId={activeSchoolId}
-                        activeSectionId={activeSectionId}
-                        onSelectSection={(id: string) => { handleScrollToSegment(id); setShowTOCMobile(false); }}
-                        onClose={() => setShowTOCMobile(false)}
-                      />
-                    </div>
-                  </div>
-                )}
+              <div className="rp-mobile-drawer-body">
+                {board.showSearchEngine !== false && <SearchEngine sections={sections} activeSchoolId={activeSchoolId} onSelectSection={(id:string) => {handleScrollToSegment(id);setShowTOCMobile(false);}}/>}
+                <SidebarTOC sections={sections} activeSchoolId={activeSchoolId} activeSectionId={activeSectionId} onSelectSection={(id:string) => {handleScrollToSegment(id);setShowTOCMobile(false);}} onClose={() => setShowTOCMobile(false)}/>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Left Side: Sticky Full-Height Navigation TOC for Desktop */}
-        <motion.div
-          layout
-          className={`schoolreg-sidebar ${isSidebarOpen ? "schoolreg-sidebar-open" : "schoolreg-sidebar-closed"} hidden lg:flex flex-col shrink-0 border-r border-gray-200 bg-white sticky top-0 overflow-y-auto no-print shadow-xs`}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        >
-          <div className="schoolreg-sidebar-brand">
-            <div className="schoolreg-sidebar-mark">R</div>
-            {isSidebarOpen && <div><strong>Richtpunt</strong><small>Reglementen</small></div>}
-          </div>
-          <div className="flex justify-end schoolreg-sidebar-toggle-row">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
-              title={isSidebarOpen ? "Zijbalk inklappen" : "Zijbalk uitklappen"}
-            >
-              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-          </div>
-
-          {isSidebarOpen && sections.length > 0 && (
-            <div className="flex flex-col h-full gap-6">
-              {board.showSearchEngine !== false && (
-                <div className="shrink-0">
-                  <SearchEngine
-                    sections={sections}
-                    activeSchoolId={activeSchoolId}
-                    onSelectSection={handleScrollToSegment}
-                  />
-                </div>
-              )}
-              <div className="flex-1 min-h-0">
-                <SidebarTOC
-                  sections={sections}
-                  activeSchoolId={activeSchoolId}
-                  activeSectionId={activeSectionId}
-                  onSelectSection={handleScrollToSegment}
-                />
-              </div>
-            </div>
-          )}
-        </motion.div>
-
-
         {/* Middle/Main Grid Column: Document Viewer and Editor list */}
-        <div className="schoolreg-content flex-1 min-w-0 p-4 sm:p-6 lg:p-8 order-1 lg:order-2 max-w-4xl w-full lg:mx-auto flex flex-col gap-5">
+        <div className="rp-content">
           
           {/* Admin panel injection if active */}
           {isAdmin && (
@@ -832,73 +757,6 @@ export default function App() {
               onToggleVersionPublish={handleToggleVersionPublish}
               onDeleteVersion={handleDeleteVersion}
             />
-          )}
-
-          {/* Ouder-vriendelijke School Kiezer (Optimized Paginaindeling) */}
-          {!isAdmin && schools.length > 0 && board.showSchoolSelector === true && (
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-3xs no-print select-none">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold font-mono shadow-3xs shrink-0 overflow-hidden"
-                  style={{ 
-                    color: board.primaryColor || '#D6AD00',
-                    backgroundColor: `${board.primaryColor || '#D6AD00'}15`
-                  }}
-                >
-                  {activeSchool?.logoType === "custom_url" && activeSchool?.logoValue ? (
-                    <img src={activeSchool.logoValue} alt="Logo" className="w-full h-full object-cover" />
-                  ) : activeSchool?.logoType === "abbreviation" && activeSchool?.logoValue ? (
-                    <span className="text-[11px] font-mono font-black text-gray-700">{activeSchool.logoValue}</span>
-                  ) : (
-                    <span className="text-lg">{activeSchool?.logoValue || "🏫"}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block leading-none">U bekijkt momenteel:</span>
-                  <h3 className="text-xs font-bold text-gray-950 font-display mt-1">{activeSchool?.name}</h3>
-                </div>
-              </div>
-
-              {/* Campus & School Year Selectors for Parents */}
-              <div className="flex flex-wrap items-center gap-4 shrink-0">
-                {/* School Year Selector Dropdown for Parents */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-450 font-sans font-medium">Schooljaar:</span>
-                  <select
-                    value={activeVersionId}
-                    onChange={(e) => handleSelectVersion(e.target.value)}
-                    className="text-xs font-sans font-bold text-gray-800 border border-gray-200 rounded-lg p-2 bg-gray-50/50 hover:bg-gray-105 cursor-pointer focus:outline-none"
-                    id="parent-school-year-select-dropdown"
-                  >
-                    {versions
-                      .filter((v) => v.isPublished)
-                      .map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.schoolYear}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* Campus Selector Dropdown for Parents */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-450 font-sans font-medium hidden md:inline">Kies schoolcampus:</span>
-                  <select
-                    value={activeSchoolId}
-                    onChange={(e) => handleSchoolChange(e.target.value)}
-                    className="text-xs font-sans font-semibold text-gray-700 border border-gray-200 rounded-lg p-2 bg-gray-50/50 hover:bg-gray-150 cursor-pointer focus:outline-none focus:ring-1"
-                    style={{ focusRingColor: board.primaryColor || '#D6AD00' }}
-                    id="parent-school-select-dropdown"
-                  >
-                    {schools.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
           )}
 
           {/* School Welcome Card Header */}
@@ -974,7 +832,7 @@ export default function App() {
           )}
 
           {/* List of active sections */}
-          <div className="space-y-4">
+          <div className="rp-document-list">
             {sortedSections.length > 0 &&
               sortedSections.map((section) => {
                 // Determine if there is a parent paragraph
