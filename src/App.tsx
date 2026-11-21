@@ -1055,48 +1055,6 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-xs font-mono text-gray-450">
           <p>&copy; {new Date().getFullYear()} {board.name}. Alle rechten voorbehouden.</p>
           <p className="text-[10px] mt-1.5 text-gray-400">Officieel gesubsidieerd onderwijs &mdash; Provinciale secundaire scholen Richtpunt.</p>
-          {!isAdmin && (
-            <div className="mt-4 pt-4 border-t border-gray-700/40 text-center max-w-sm mx-auto space-y-2">
-              <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold select-none font-mono">Beheren van dit reglement:</p>
-              <div className="flex flex-wrap justify-center gap-3 text-xs font-sans">
-                <button
-                  onClick={() => {
-                    setIsAdmin(true);
-                    setAdminRole("super");
-                    setSchoolAdminSchoolId("");
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("admin", "super");
-                    url.searchParams.delete("school");
-                    window.history.pushState({}, "", url.toString());
-                  }}
-                  className="px-3 py-1 bg-gray-800 text-gray-300 hover:text-white rounded hover:bg-gray-750 transition duration-150 cursor-pointer text-[10px] font-semibold border border-gray-700"
-                  id="footer-admin-login-super"
-                >
-                  👑 Log in als Bestuursbeheerder
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAdmin(true);
-                    setAdminRole("school");
-                    // Default to the active school's ID if possible, otherwise first school
-                    const defaultId = activeSchoolId || (schools.length > 0 ? schools[0].id : "145722");
-                    setSchoolAdminSchoolId(defaultId);
-                    
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("admin", "school");
-                    url.searchParams.set("school", defaultId);
-                    window.history.pushState({}, "", url.toString());
-
-                    handleSchoolChange(defaultId);
-                  }}
-                  className="px-3 py-1 bg-gray-800 text-gray-300 hover:text-white rounded hover:bg-gray-750 transition duration-150 cursor-pointer text-[10px] font-semibold border border-gray-700"
-                  id="footer-admin-login-school"
-                >
-                  🏫 Log in als Schoolbeheerder
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </footer>
 
