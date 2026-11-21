@@ -189,11 +189,17 @@ export default function App() {
       // Look up URL search params to find direct "sublink" per school, e.g. ?school=36467
       const params = new URLSearchParams(window.location.search);
       const schoolParam = params.get("school");
+      let canSeedDatabase = false;
+      try {
+        const sessionResponse = await fetch("/api/session", { credentials: "same-origin", cache: "no-store" });
+        const session = sessionResponse.ok ? await sessionResponse.json() : null;
+        canSeedDatabase = session?.role === "super" && String(session?.email || "").toLowerCase() === "arne.nys@ptiz.be";
+      } catch { canSeedDatabase = false; }
 
       let loadedVersionsList: RegulationVersion[] = await fetchVersions().catch((error) => { console.warn("Schooljaarversies konden niet uit Cloudflare D1 worden geladen:", error); return []; });
       if (loadedVersionsList.length === 0) {
         loadedVersionsList = [{ id: "2026-2027", schoolYear: "2026-2027", isPublished: true, createdAt: new Date().toISOString() }];
-        saveVersions(loadedVersionsList).catch((error) => console.warn("Standaardversie wordt bij de eerste beheerdersactie in Cloudflare D1 opgeslagen:", error));
+        if (canSeedDatabase) saveVersions(loadedVersionsList).catch((error) => console.warn("Standaardversie kon niet in Cloudflare D1 worden opgeslagen:", error));
       }
       setVersions(loadedVersionsList);
 
@@ -271,11 +277,10 @@ export default function App() {
 
       if (schoolsMigrated) {
         setSchools(migratedSchools);
-        saveSchools(migratedSchools).catch(err => {
-          console.warn("Background school save failed:", err);
-        });
+        if (canSeedDatabase) saveSchools(migratedSchools).catch(err => console.warn("Bijwerken van scholen in Cloudflare D1 mislukt:", err));
       } else {
         setSchools(activeSchoolsList);
+        if (loadedSchools.length === 0 && canSeedDatabase) saveSchools(activeSchoolsList).catch(err => console.warn("Initiële schoolgegevens konden niet in Cloudflare D1 worden opgeslagen:", err));
       }
 
       // If query parameter matches an existing school, activate it directly.
@@ -294,7 +299,7 @@ export default function App() {
       if (loadedSections.length === 0) {
         loadedSections = defaultSections;
         setSections(loadedSections);
-        saveSectionsForVersion(currentVersionId, loadedSections).catch(err => console.warn("Standaardreglement kon niet in Cloudflare D1 worden opgeslagen:", err));
+        if (canSeedDatabase) saveSectionsForVersion(currentVersionId, loadedSections).catch(err => console.warn("Standaardreglement kon niet in Cloudflare D1 worden opgeslagen:", err));
       } else {
         setSections(loadedSections);
       }
@@ -312,9 +317,7 @@ export default function App() {
           headerText: "",
           footerText: ""
         };
-        savePDFConfig(loadedPDFConfig).catch(err => {
-          console.warn("Background save of new PDF configuration failed:", err);
-        });
+        if (canSeedDatabase) savePDFConfig(loadedPDFConfig).catch(err => console.warn("Standaard PDF-configuratie kon niet in Cloudflare D1 worden opgeslagen:", err));
       }
       setPdfConfig(loadedPDFConfig);
 
@@ -327,7 +330,7 @@ export default function App() {
           finalBoardFetched.logoUrl = defaultSchoolBoard.logoUrl;
         }
         try {
-          saveBoard(finalBoardFetched).catch(err => console.warn("Initialisatie van bestuursinstellingen in Cloudflare D1 mislukt:", err));
+          if (canSeedDatabase) saveBoard(finalBoardFetched).catch(err => console.warn("Initialisatie van bestuursinstellingen in Cloudflare D1 mislukt:", err));
         } catch (e) {
           console.warn(e);
         }
@@ -498,7 +501,7 @@ export default function App() {
       {accessSetupError && (
         <div role="alert" className="mx-auto mt-4 max-w-4xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <strong>Beheerlogin nog niet volledig geconfigureerd.</strong>{" "}
-          {accessSetupError} De Firebase-serviceaccountsleutel moet als Cloudflare Pages-secret worden ingesteld.
+          {accessSetupError}
         </div>
       )}
 
