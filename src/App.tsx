@@ -504,7 +504,7 @@ export default function App() {
   });
 
   return (
-    <div className="schoolreg-app min-h-screen flex flex-col font-sans antialiased text-gray-800">
+    <div className="schoolreg-app rp-app-root min-h-screen flex flex-col antialiased">
       {accessSetupError && (
         <div role="alert" className="mx-auto mt-4 max-w-4xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <strong>Beheerlogin nog niet volledig geconfigureerd.</strong>{" "}
@@ -759,65 +759,8 @@ export default function App() {
             />
           )}
 
-          {/* School Welcome Card Header */}
-          {board.showWelcomeCard === true && (
-            <div 
-              className="text-white p-6 md:p-8 rounded-2xl shadow-xs relative overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${board.primaryColor || '#D6AD00'}, ${board.secondaryColor || '#2E2E2E'})`
-              }}
-            >
-              {/* Quick Export PDF button on the top right of the welcome card */}
-              <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20 no-print">
-                <button
-                  onClick={() => {
-                    setPdfPrintImmediate(true);
-                    setShowPDFExporter(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2E2E2E] hover:bg-black text-white hover:text-amber-300 rounded-lg shadow-md hover:shadow-lg font-bold text-xs cursor-pointer transition-all hover:scale-105 active:scale-95 border border-gray-800"
-                  title="Print het reglement onmiddellijk"
-                  id="welcome-pdf-export-btn"
-                >
-                  <span className="bg-red-500 text-white px-1 py-0.2 rounded text-[8px] font-extrabold tracking-tight font-mono leading-none">PDF</span>
-                  <FileDown size={14} />
-                  <span className="hidden sm:inline">Printen</span>
-                </button>
-              </div>
-
-              <div className="relative z-10 space-y-2">
-                <span className="text-[10px] font-bold tracking-widest font-mono uppercase bg-[#2E2E2E] text-white px-2 py-0.5 rounded leading-none">
-                  CAMPUS PRESENTATIE
-                </span>
-                <h2 className="text-xl md:text-2xl font-display font-medium leading-normal pr-20 md:pr-24">
-                  {activeSchool?.name}
-                </h2>
-                <p className="text-xs leading-relaxed max-w-2xl font-sans text-gray-800">
-                  In dit interactieve document vindt u het volledige, goedgekeurde schoolreglement voor het schooljaar <strong>{versions.find((v) => v.id === activeVersionId)?.schoolYear || "2026-2027"}</strong>. Per onderdeel kunt u zien of het behoort tot het algemene provinciale bestuursreglement of specifiek voor deze schoollocatie is vastgelegd.
-                </p>
-                
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-4 text-xs font-mono select-none">
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 size={13} className="text-[#2E2E2E]" />
-                    <span>Sublink: <strong>actief</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 size={13} className="text-[#2E2E2E]" />
-                    <span>Schooleigen filters: <strong>geldig</strong></span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Visual background swooshes */}
-              <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 pointer-events-none hidden sm:block">
-                <svg viewBox="0 0 100 100" fill="none" className="w-full h-full object-cover">
-                  <path d="M100 0 L100 100 L50 100 Z" fill="#2E2E2E" />
-                </svg>
-              </div>
-            </div>
-          )}
-
           {/* Compact document context for visitors when no welcome banner is configured */}
-          {!isAdmin && board.showWelcomeCard !== true && (
+          {!isAdmin && (
             <section className="schoolreg-intro-card no-print" aria-label="Over dit schoolreglement">
               <div className="schoolreg-intro-icon"><FileText size={20} /></div>
               <div className="schoolreg-intro-copy">
