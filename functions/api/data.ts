@@ -1,5 +1,7 @@
 import { jsonResponse, verifyAccessRequest } from "../_utils/access";
 
+type D1Statement = { bind(...values: any[]): D1Statement; all<T = unknown>(): Promise<{ results: T[] }>; };
+type D1Database = { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<unknown[]> };
 type Env = { DB: D1Database };
 type RecordRow = { collection: string; record_id: string; version_id: string; data_json: string; updated_at: string };
 
