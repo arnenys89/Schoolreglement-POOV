@@ -18,7 +18,8 @@ import {
 import {
   defaultSchoolBoard,
   defaultSections,
-  defaultSchools
+  defaultSchools,
+  defaultPDFConfig
 } from "./data/mockData";
 
 import Header from "./components/Header";
