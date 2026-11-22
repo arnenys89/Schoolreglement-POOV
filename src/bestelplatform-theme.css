@@ -19,3 +19,15 @@ body,.schoolreg-app{font-family:"Meta Pro Light","FF Meta Pro Light","Fira Sans"
 @media(max-width:700px){.rp-topbar{height:auto;min-height:62px;padding:9px 12px;gap:8px}.rp-brand{min-width:0;gap:7px}.rp-brand-mark{width:32px;height:32px;font-size:20px}.rp-brand-copy strong{font-size:12px}.rp-brand-copy small{font-size:7px}.rp-topbar-context{gap:5px}.rp-select-wrap{min-width:0;padding:5px 7px;max-width:132px}.rp-select-wrap>span{font-size:7px}.rp-select-wrap select{font-size:10px}.rp-year-select{max-width:92px;min-width:82px}.rp-topbar-buttons{display:none}.rp-mobile-menu{width:32px;height:32px;flex:0 0 auto}.rp-admin-context{padding:7px 12px;flex-wrap:wrap}.rp-context-link{width:100%;margin-left:23px}.rp-content{padding:18px 12px 35px;gap:14px}.rp-content h1{font-size:23px}.schoolreg-intro-card{align-items:flex-start;flex-wrap:wrap;padding:16px}.schoolreg-intro-copy h1{font-size:18px}.schoolreg-intro-action{margin-left:55px}.rp-regulation-card{padding:15px!important}.rp-regulation-card .flex.items-start.justify-between{gap:8px}.rp-admin-dashboard{padding:14px!important;overflow:hidden}.rp-admin-dashboard table{display:block;overflow-x:auto}.rp-mobile-drawer{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;width:min(100%,430px);background:#fff;box-shadow:0 10px 40px #0002;overflow:hidden}.rp-mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--rp-line)}.rp-mobile-drawer-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:18px;padding:16px;overflow:auto}}
 @media(max-width:440px){.rp-brand-copy{display:none}.rp-topbar{padding-left:9px;padding-right:9px}.rp-select-wrap{max-width:120px}.rp-year-select{max-width:83px}.rp-content{padding-left:9px;padding-right:9px}}
 @media print{.rp-topbar,.rp-sidebar,.rp-admin-context,.rp-mobile-menu,.rp-mobile-drawer{display:none!important}.rp-layout{display:block!important;margin:0!important}.rp-content{max-width:none!important;padding:0!important}.schoolreg-app footer{display:none!important}}
+
+/* SAPOOV gedeelde vaste navigatie en centrale inhoudsscroll */
+.schoolreg-app{height:100dvh;min-height:0;overflow:hidden}
+.rp-topbar{height:72px;min-height:72px;margin-left:248px;flex:0 0 72px}
+.rp-sidebar{top:72px;width:248px}
+.rp-sidebar-expanded{width:248px}
+.rp-layout{height:calc(100dvh - 72px);min-height:0;margin-left:248px;overflow:hidden}
+.rp-content{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.rp-admin-context{margin-left:248px;flex:0 0 auto}
+.schoolreg-app:has(.rp-sidebar-collapsed) .rp-layout{margin-left:66px}
+.schoolreg-app:has(.rp-sidebar-collapsed) .rp-topbar,.schoolreg-app:has(.rp-sidebar-collapsed) .rp-admin-context{margin-left:66px}
+@media(max-width:1023px){.schoolreg-app{height:100dvh}.rp-topbar{height:62px;min-height:62px;flex-basis:62px;margin-left:0}.rp-layout{height:calc(100dvh - 62px);min-height:0;margin-left:0}.rp-sidebar{display:none}.rp-content{overflow-y:auto}.rp-admin-context{margin-left:0}}
