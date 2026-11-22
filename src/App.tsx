@@ -724,7 +724,7 @@ export default function App() {
                 <div className="rp-brand"><span className="rp-brand-mark">R</span><span className="rp-brand-copy"><strong>Richtpunt</strong><small>REGLEMENTEN</small></span></div>
                 <button type="button" className="rp-sidebar-toggle" onClick={() => setShowTOCMobile(false)} aria-label="Navigatie sluiten"><X size={19}/></button>
               </div>
-              <div className="rp-mobile-drawer-body">
+              <div className="rp-mobile-drawer-body"><div className="rp-global-appnav rp-global-appnav-mobile"><div className="rp-global-label">SAPOOV-TOEPASSINGEN</div><a href="https://www.sapoov.be/">Dashboard</a><a href="https://richtpunt-werkplekreservatie.arne-nys.workers.dev">Werkplekreservatie</a><a href="https://richtpunt-professionalisering.arne-nys.workers.dev">Professionalisering</a><a href="https://richtpunt-activiteitenplatform.arne-nys.workers.dev">Activiteitenplatform</a><a href="https://richtpunt-examenmaker.arne-nys.workers.dev">Examenmaker</a><a href="https://sapo-doelennetwerk.arne-nys.workers.dev/">SAPO Doelennetwerk</a><a href="https://calendar-bridge.arne-nys.workers.dev">Calendar Bridge</a><a href="https://richtpunt-bestelplatform.pages.dev">Bestelplatform</a></div>
                 {board.showSearchEngine !== false && <SearchEngine sections={sections} activeSchoolId={activeSchoolId} onSelectSection={(id:string) => {handleScrollToSegment(id);setShowTOCMobile(false);}}/>}
                 <SidebarTOC sections={sections} activeSchoolId={activeSchoolId} activeSectionId={activeSectionId} onSelectSection={(id:string) => {handleScrollToSegment(id);setShowTOCMobile(false);}} onClose={() => setShowTOCMobile(false)}/>
               </div>
