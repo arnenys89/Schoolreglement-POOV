@@ -702,6 +702,7 @@ export default function App() {
               {isSidebarOpen ? <X size={16}/> : <Menu size={17}/>}
             </button>
           </div>
+          {isSidebarOpen && <nav className="rp-global-appnav"><a href="https://www.sapoov.be/">Dashboard</a><a href="https://richtpunt-werkplekreservatie.arne-nys.workers.dev">Werkplekreservatie</a><a href="https://richtpunt-professionalisering.arne-nys.workers.dev">Professionalisering</a><a href="https://richtpunt-activiteitenplatform.arne-nys.workers.dev">Activiteitenplatform</a><a href="https://richtpunt-examenmaker.arne-nys.workers.dev">Examenmaker</a><a href="https://sapo-doelennetwerk.arne-nys.workers.dev/">SAPO Doelennetwerk</a><a href="https://calendar-bridge.arne-nys.workers.dev">Calendar Bridge</a><a href="https://richtpunt-bestelplatform.pages.dev">Bestelplatform</a></nav>}
           {isSidebarOpen && sections.length > 0 && (
             <div className="rp-sidebar-content">
               {board.showSearchEngine !== false && (
