@@ -37,3 +37,5 @@ body,.schoolreg-app{font-family:"Meta Pro Light","FF Meta Pro Light","Fira Sans"
 .rp-global-appnav a{display:block;padding:7px 9px;border-radius:7px;color:#555;text-decoration:none;font-size:11px;line-height:1.35}
 .rp-global-appnav a:hover{background:#fbf5dc;color:#222}
 @media(max-width:1023px){.rp-global-appnav{display:none}}
+
+@media(max-width:1023px){.rp-global-appnav-mobile{display:flex!important;flex-direction:column;border-bottom:1px solid #e8e8e4;padding:0 0 12px;margin-bottom:12px}.rp-global-appnav-mobile .rp-global-label{padding:4px 9px 6px;color:#999;font-size:9px;letter-spacing:1.2px}}
