@@ -84,7 +84,7 @@ export default function App() {
         email = typeof session.email === "string" ? session.email.trim().toLowerCase() : "";
         if (cancelled) return;
 
-        const isSuperAdmin = session.role === "super" && email === "arne.nys@ptiz.be";
+        const isSuperAdmin = session.role === "super";
         if (cancelled) return;
         const role = isSuperAdmin ? "super" : "none";
         setAccessRole(role);
