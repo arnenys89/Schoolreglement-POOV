@@ -1,4 +1,4 @@
-import { jsonResponse, verifyAccessRequest } from "../_utils/access";
+import { jsonResponse } from "../_utils/access";
 
 type D1Statement = { bind(...values: any[]): D1Statement; all<T = unknown>(): Promise<{ results: T[] }>; };
 type D1Database = { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<unknown[]> };
@@ -8,9 +8,21 @@ type JsonRow = { data_json: string };
 const COLLECTIONS = new Set(["schools", "sections", "config", "versions"]);
 
 async function requireAdmin(request: Request): Promise<void> {
-  const identity = await verifyAccessRequest(request);
-  const email = String(identity.email || "").trim().toLowerCase();
-  if (email !== "arne.nys@ptiz.be") throw new Error("FORBIDDEN");
+  const token = request.headers.get("Cf-Access-Jwt-Assertion") || "";
+  if (!token) throw new Error("UNAUTHENTICATED");
+  let response: Response;
+  try {
+    response = await fetch("https://sapoov-identity-api.arne-nys.workers.dev/api/access/schoolreglementen", {
+      headers: { "Cf-Access-Jwt-Assertion": token }
+    });
+  } catch {
+    throw new Error("CENTRAL_UNAVAILABLE");
+  }
+  const access: any = await response.json().catch(() => ({}));
+  const permissions: string[] = [...new Set((access.roles || []).flatMap((role: any) => role.permissions || []))];
+  if (!response.ok || !access.authorized || (!permissions.includes("*") && !permissions.includes("regulations.manage"))) {
+    throw new Error("FORBIDDEN");
+  }
 }
 
 function parsePayload(row: JsonRow) {
@@ -51,7 +63,8 @@ export const onRequest = async ({ request, env }: { request: Request; env: Env }
       await requireAdmin(request);
     } catch (error) {
       const forbidden = error instanceof Error && error.message === "FORBIDDEN";
-      return jsonResponse({ error: forbidden ? "Geen schrijfrechten." : "Geldige Cloudflare Access-aanmelding vereist." }, forbidden ? 403 : 401);
+      const unavailable = error instanceof Error && error.message === "CENTRAL_UNAVAILABLE";
+      return jsonResponse({ error: unavailable ? "De centrale SAPOOV-rechtenservice is tijdelijk niet bereikbaar." : forbidden ? "Geen schrijfrechten." : "Geldige Cloudflare Access-aanmelding vereist." }, unavailable ? 503 : forbidden ? 403 : 401);
     }
 
     if (!COLLECTIONS.has(collection)) return jsonResponse({ error: "Ongeldige gegevenscollectie." }, 400);
