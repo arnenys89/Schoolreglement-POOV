@@ -31,3 +31,9 @@ body,.schoolreg-app{font-family:"Meta Pro Light","FF Meta Pro Light","Fira Sans"
 .schoolreg-app:has(.rp-sidebar-collapsed) .rp-layout{margin-left:66px}
 .schoolreg-app:has(.rp-sidebar-collapsed) .rp-topbar,.schoolreg-app:has(.rp-sidebar-collapsed) .rp-admin-context{margin-left:66px}
 @media(max-width:1023px){.schoolreg-app{height:100dvh}.rp-topbar{height:62px;min-height:62px;flex-basis:62px;margin-left:0}.rp-layout{height:calc(100dvh - 62px);min-height:0;margin-left:0}.rp-sidebar{display:none}.rp-content{overflow-y:auto}.rp-admin-context{margin-left:0}}
+
+/* SAPOOV gemeenschappelijke applicatienavigatie */
+.rp-global-appnav{display:flex;flex-direction:column;gap:2px;padding:0 8px 12px;margin-bottom:10px;border-bottom:1px solid #e8e8e4}
+.rp-global-appnav a{display:block;padding:7px 9px;border-radius:7px;color:#555;text-decoration:none;font-size:11px;line-height:1.35}
+.rp-global-appnav a:hover{background:#fbf5dc;color:#222}
+@media(max-width:1023px){.rp-global-appnav{display:none}}
